@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LEXIA">
+  <rect width="512" height="512" fill="#F4F5F3"/>
+  <g stroke="#2C5F7C" stroke-width="17" stroke-linecap="square" fill="none">
+    <path d="M67 67h96M67 67v96"/><path d="M445 67h-96M445 67v96"/>
+    <path d="M67 445h96M67 445v-96"/><path d="M445 445h-96M445 445v-96"/>
+  </g>
+  <text x="256" y="256" fill="#16181C" font-size="245"
+        font-family="Arial Hebrew, Arial, system-ui, sans-serif"
+        text-anchor="middle" dominant-baseline="central">א</text>
+</svg>
