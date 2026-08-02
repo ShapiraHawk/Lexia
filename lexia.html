@@ -1,0 +1,3368 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LEXIA</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#F4F5F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14171A" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Reading practice for pure alexia, in Hebrew and English.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="LEXIA">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png" sizes="192x192">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+/* ============================================================
+   LEXIA — design tokens
+   Palette: "ink & limestone". Cool paper, slate-blue instrument
+   accent, muted signal colours (never alarm-red: this population
+   does not need to be startled).
+   ============================================================ */
+:root{
+  --paper:#F4F5F3;
+  --paper-2:#FFFFFF;
+  --paper-3:#EAECE8;
+  --ink:#16181C;
+  --ink-2:#4A5058;
+  --ink-3:#7B828B;
+  --rule:#D6D9D4;
+  --accent:#2C5F7C;
+  --accent-2:#E3EDF2;
+  --good:#2E7D5B;
+  --good-2:#E2F0EA;
+  --warn:#A9741B;
+  --bad:#A8483F;
+  --bad-2:#F5E7E5;
+  --stage-bg:#FFFFFF;
+  --stage-fg:#16181C;
+  --radius:5px;
+  --tap:56px;
+  --sp:8px;
+  --ui-font: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Arial Hebrew",sans-serif;
+  --read-font: system-ui,-apple-system,"Segoe UI",Arial,"Arial Hebrew",sans-serif;
+  --read-size:30px;
+  --read-track:0em;
+  --read-leading:1.7;
+}
+[data-theme="dark"]{
+  --paper:#14171A; --paper-2:#1C2126; --paper-3:#262C32;
+  --ink:#EDEFEC; --ink-2:#A7AEB5; --ink-3:#78808A;
+  --rule:#333A41;
+  --accent:#7FB3CE; --accent-2:#1E2C36;
+  --good:#6BBF95; --good-2:#17281F;
+  --warn:#D6A44C;
+  --bad:#D98B82; --bad-2:#2C1E1D;
+  --stage-bg:#1C2126; --stage-fg:#EDEFEC;
+}
+[data-theme="contrast"]{
+  --paper:#000000; --paper-2:#000000; --paper-3:#141414;
+  --ink:#FFFFFF; --ink-2:#FFFFFF; --ink-3:#D0D0D0;
+  --rule:#FFFFFF;
+  --accent:#FFE14D; --accent-2:#241F00;
+  --good:#5BFF9E; --good-2:#00230F;
+  --warn:#FFC14D;
+  --bad:#FF9A8F; --bad-2:#2A0F0C;
+  --stage-bg:#000000; --stage-fg:#FFFFFF;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:var(--ui-font);
+  font-size:17px; line-height:1.5;
+  overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:3px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+#app{max-width:760px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;
+     background:var(--paper);position:relative}
+body{padding-top:env(safe-area-inset-top)}
+.topbar{padding-top:calc(14px + env(safe-area-inset-top))}
+
+/* ---------- chrome ---------- */
+.topbar{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--rule);
+        position:sticky;top:0;background:var(--paper);z-index:20}
+.topbar h1{font-size:15px;margin:0;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.topbar .spacer{flex:1}
+.iconbtn{background:none;border:1px solid var(--rule);border-radius:var(--radius);
+         min-width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;
+         font-size:18px;padding:0 10px}
+.iconbtn:active{background:var(--paper-3)}
+
+.screen{flex:1;padding:22px 18px 110px;animation:fade .18s ease-out}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+.tabbar{position:fixed;bottom:0;inset-inline:0;margin:0 auto;max-width:760px;
+        display:grid;grid-template-columns:repeat(4,1fr);
+        background:var(--paper);border-top:1px solid var(--rule);z-index:30;
+        padding-bottom:env(safe-area-inset-bottom)}
+.tabbar button{background:none;border:0;padding:11px 4px 13px;display:flex;flex-direction:column;
+               align-items:center;gap:3px;font-size:12.5px;color:var(--ink-3);min-height:var(--tap)}
+.tabbar button .g{font-size:19px;line-height:1}
+.tabbar button[aria-current="page"]{color:var(--accent);font-weight:650}
+.tabbar button[aria-current="page"] .g{transform:translateY(-1px)}
+
+/* ---------- primitives ---------- */
+.card{background:var(--paper-2);border:1px solid var(--rule);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.card.flat{background:transparent}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);font-weight:650;margin:0 0 6px}
+h2{font-size:22px;margin:0 0 10px;font-weight:680;letter-spacing:-.01em}
+h3{font-size:17px;margin:0 0 8px;font-weight:650}
+p{margin:0 0 12px;color:var(--ink-2)}
+.muted{color:var(--ink-3);font-size:14px}
+.rule{height:1px;background:var(--rule);margin:18px 0}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+     min-height:var(--tap);padding:0 22px;border-radius:var(--radius);
+     border:1px solid var(--accent);background:var(--accent);color:#fff;
+     font-weight:640;font-size:17px;width:100%}
+[data-theme="dark"] .btn,[data-theme="contrast"] .btn{color:#0E1114}
+.btn:active{filter:brightness(.92)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
+.btn.quiet{background:var(--paper-3);color:var(--ink);border-color:transparent}
+.btn.sm{min-height:44px;font-size:15px;padding:0 14px;width:auto}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.btnrow{display:flex;gap:10px}
+.btnrow>*{flex:1}
+
+/* ---------- the stage: signature element ----------
+   Every stimulus appears inside a plate framed with registration
+   marks, the way a letterform would be proofed on press. The stage
+   itself is deliberately plain — its typography belongs to the user. */
+.stage{position:relative;background:var(--stage-bg);border:1px solid var(--rule);
+       border-radius:2px;min-height:230px;display:flex;align-items:center;justify-content:center;
+       padding:28px 20px;margin:10px 0 20px;overflow:hidden}
+.stage::before,.stage::after,.stage>.reg1,.stage>.reg2{content:"";position:absolute;width:13px;height:13px;
+       border-color:var(--accent);opacity:.55;pointer-events:none}
+.stage::before{top:7px;inset-inline-start:7px;border-top:2px solid;border-inline-start:2px solid}
+.stage::after{top:7px;inset-inline-end:7px;border-top:2px solid;border-inline-end:2px solid}
+.stage>.reg1{bottom:7px;inset-inline-start:7px;border-bottom:2px solid;border-inline-start:2px solid}
+.stage>.reg2{bottom:7px;inset-inline-end:7px;border-bottom:2px solid;border-inline-end:2px solid}
+.stim{font-family:var(--read-font);font-size:clamp(44px,13vw,88px);color:var(--stage-fg);
+      letter-spacing:var(--read-track);line-height:1.25;text-align:center;font-weight:500}
+.stim.word{font-size:clamp(34px,9.5vw,62px)}
+.mask{font-family:var(--read-font);font-size:clamp(44px,13vw,88px);color:var(--stage-fg);opacity:.75;letter-spacing:.02em}
+.fixation{font-size:42px;color:var(--ink-3)}
+
+/* ---------- response grid ---------- */
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice{min-height:74px;border:1.5px solid var(--rule);background:var(--paper-2);border-radius:var(--radius);
+        font-family:var(--read-font);font-size:26px;font-weight:520;display:flex;align-items:center;
+        justify-content:center;padding:8px;word-break:break-word}
+.choice.wide{grid-column:span 2;min-height:60px;font-size:20px}
+.choice:active{background:var(--paper-3)}
+.choice.correct{border-color:var(--good);background:var(--good-2);color:var(--good)}
+.choice.wrong{border-color:var(--bad);background:var(--bad-2);color:var(--bad)}
+.choice.reveal{border-color:var(--good);border-style:dashed}
+
+/* ---------- progress / meters ---------- */
+.sessbar{display:flex;gap:4px;margin-top:12px}
+.sessbar i{flex:1;height:5px;background:var(--paper-3);border-radius:2px}
+.sessbar i.done{background:var(--accent)}
+.sessbar i.now{background:var(--accent);opacity:.5}
+
+.metric{display:flex;align-items:baseline;gap:8px}
+.metric .n{font-size:40px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.metric .u{font-size:14px;color:var(--ink-3)}
+.metricgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mini{border:1px solid var(--rule);border-radius:var(--radius);padding:12px 14px;background:var(--paper-2)}
+.mini .k{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:640}
+.mini .v{font-size:27px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+.mini .d{font-size:13px;color:var(--ink-3)}
+.delta.up{color:var(--good)} .delta.down{color:var(--good)} .delta.flat{color:var(--ink-3)}
+
+.spark{width:100%;height:56px;display:block}
+.masterygrid{display:flex;flex-wrap:wrap;gap:6px;direction:inherit}
+.cell{width:44px;height:48px;border:1px solid var(--rule);border-radius:3px;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;background:var(--paper-2);font-family:var(--read-font)}
+.cell b{font-size:21px;font-weight:500;line-height:1}
+.cell i{display:block;width:26px;height:4px;border-radius:2px;background:var(--paper-3);margin-top:5px}
+.cell i span{display:block;height:100%;border-radius:2px;background:var(--good)}
+
+.pair{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule)}
+.pair:last-child{border-bottom:0}
+.pair .lp{font-family:var(--read-font);font-size:22px}
+.pair .ct{font-variant-numeric:tabular-nums;color:var(--ink-3);font-size:14px}
+
+/* ---------- stage map ---------- */
+.stagerow{display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--rule)}
+.stagerow:last-child{border-bottom:0}
+.stagenum{flex:0 0 38px;height:38px;border-radius:50%;border:1.5px solid var(--rule);display:flex;
+          align-items:center;justify-content:center;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink-3)}
+.stagerow.on .stagenum{border-color:var(--accent);color:var(--accent);background:var(--accent-2)}
+.stagerow.done .stagenum{border-color:var(--good);color:#fff;background:var(--good)}
+.stagerow .body{flex:1}
+.stagerow .body h3{margin-bottom:2px}
+.lock{font-size:13px;color:var(--ink-3)}
+
+/* ---------- passage reader ---------- */
+.passage{font-family:var(--read-font);font-size:var(--read-size);letter-spacing:var(--read-track);
+         line-height:var(--read-leading);color:var(--stage-fg);background:var(--stage-bg);
+         border:1px solid var(--rule);border-radius:2px;padding:24px 20px;margin:12px 0 18px;
+         max-width:36em;position:relative}
+.passage p{color:inherit;margin:0 0 .8em}
+.passage p:last-child{margin-bottom:0}
+.timer{font-variant-numeric:tabular-nums;font-size:30px;font-weight:700;letter-spacing:.02em}
+
+/* ---------- appearance sheet ---------- */
+.sheet{position:fixed;inset:0;background:rgba(10,12,14,.45);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.sheetbody{background:var(--paper);width:100%;max-width:760px;border-radius:12px 12px 0 0;padding:20px 18px 30px;
+           max-height:88vh;overflow:auto;border-top:1px solid var(--rule)}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);
+             font-weight:650;margin-bottom:8px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{border:1.5px solid var(--rule);background:var(--paper-2);border-radius:var(--radius);
+            min-height:46px;padding:0 14px;font-size:15px;flex:1;min-width:80px}
+.seg button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-2);color:var(--accent);font-weight:650}
+input[type=range]{width:100%;height:44px;accent-color:var(--accent)}
+.swatches{display:flex;gap:8px}
+.swatch{width:46px;height:46px;border-radius:var(--radius);border:2px solid var(--rule)}
+.swatch[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-2)}
+
+/* ---------- language gate ---------- */
+.gate{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:34px 22px}
+.gate .mark{font-size:13px;letter-spacing:.34em;text-transform:uppercase;color:var(--ink-3);font-weight:650;margin-bottom:26px}
+.gatebtn{width:100%;min-height:96px;border:1.5px solid var(--rule);background:var(--paper-2);
+         border-radius:var(--radius);padding:16px 20px;text-align:start;margin-bottom:12px;display:block}
+.gatebtn b{display:block;font-size:30px;font-weight:660;margin-bottom:3px}
+.gatebtn span{display:block;font-size:14px;color:var(--ink-3)}
+.gatebtn.primary{border-color:var(--accent);background:var(--accent-2)}
+
+/* ---------- misc ---------- */
+.note{border-inline-start:3px solid var(--accent);background:var(--accent-2);padding:12px 14px;
+      border-radius:0 var(--radius) var(--radius) 0;font-size:14.5px;color:var(--ink-2);margin-bottom:16px}
+.note.caution{border-color:var(--warn);background:transparent;border:1px solid var(--rule);border-inline-start:3px solid var(--warn)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.chip{border:1px solid var(--rule);border-radius:99px;padding:6px 13px;font-size:13.5px;color:var(--ink-2);background:var(--paper-2)}
+.chip b{font-weight:700;color:var(--ink)}
+.center{text-align:center}
+.big{font-size:19px}
+canvas.trace{touch-action:none;display:block;margin:0 auto;background:var(--stage-bg);border-radius:2px}
+.hidden{display:none!important}
+.sronly{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.grade{font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;padding:3px 7px;
+       border-radius:3px;border:1px solid var(--rule);color:var(--ink-3)}
+.grade.v{color:var(--good);border-color:var(--good)}
+.grade.x{color:var(--warn);border-color:var(--warn)}
+.listen{border:1px solid var(--rule);background:var(--paper-2);border-radius:99px;
+        min-height:44px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;
+        font-size:14.5px;color:var(--ink-2);font-weight:600}
+.listen .spk{font-size:16px;line-height:1}
+.listen.on{border-color:var(--accent);color:var(--accent);background:var(--accent-2)}
+.listen.on .spk{animation:pulse 1.1s ease-in-out infinite}
+.listen.silent{border-color:var(--warn);color:var(--warn)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.listenrow{display:flex;justify-content:flex-start;margin:0 0 14px}
+.voicebadge{font-size:13px;color:var(--ink-3);margin-top:12px}
+.diagline{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--rule)}
+.diagline:last-child{border-bottom:0}
+.diagline b{font-weight:650;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.diagline.bad b{color:var(--warn)} .diagline.good b{color:var(--good)}
+</style>
+</head>
+<body>
+<div id="app" role="application"></div>
+<script>
+/* =============================================================
+   LEXIA — bilingual rehabilitation trainer for pure alexia
+   Single-file build. Hebrew-first.
+   The interface language and the training language are the SAME
+   choice: in Hebrew mode nothing English appears, and vice versa.
+   ============================================================= */
+
+/* ---------- i18n ---------- */
+const STR = {
+  he:{
+    dir:"rtl", name:"עברית",
+    app:"לקסיה",
+    tab_today:"היום", tab_program:"תרגול", tab_progress:"התקדמות", tab_settings:"הגדרות",
+    greet:"שלום",
+    todays_session:"האימון של היום",
+    stage_of:"שלב", minutes:"דקות", exercises:"תרגילים",
+    start_session:"התחלת אימון", continue_session:"המשך אימון",
+    quick3:"תרגול קצר · 3 דקות", read_something:"קריאה חופשית",
+    streak_days:"ימים ברצף", week_goal:"השבוע",
+    run_assessment:"מדידת קריאה", run_assessment_sub:"בערך 6 דקות. מודדת כמה מאט אותך כל אות נוספת.",
+    assessment_due:"הגיע הזמן למדידה חדשה",
+    // stages
+    s1:"זיהוי אותיות", s1d:"אות בודדת, אבחנה בין אותיות דומות, מעקב באצבע",
+    s2:"זיהוי מילים", s2d:"מילים שכיחות, הבזק, שורשים, אותיות סופיות",
+    s3:"קריאת משפטים", s3d:"משפטים קצרים עם שאלות הבנה",
+    s4:"קריאת פסקאות", s4d:"קריאה חוזרת של אותו טקסט, שלוש פעמים",
+    s5:"קריאה בעולם האמיתי", s5d:"טקסט משלך: הודעות, טפסים, תוויות",
+    locked:"", available:"זמין", current:"השלב שלך",
+    // exercises
+    ex_letter_flash:"אות בהבזק", ex_letter_discrim:"איתור אות", ex_trace:"מעקב באצבע",
+    ex_word_flash:"מילה בהבזק", ex_word_pick:"בחירת מילה", ex_root:"משפחת שורש",
+    ex_final:"אותיות סופיות", ex_sentence:"משפט והבנה", ex_mor:"קריאה חוזרת",
+    ex_case:"אות גדולה וקטנה",
+    // runners
+    which_letter:"איזו אות ראית?", which_word:"איזו מילה ראית?",
+    find_letter:"מצאו את האות", not_sure:"לא בטוח",
+    trace_title:"עקבו אחרי האות ואמרו אותה בקול",
+    trace_again:"שוב", trace_next:"הבא", trace_score:"דיוק המעקב",
+    root_q:"איזו מילה לא שייכת למשפחה הזאת?",
+    final_q:"מהי הצורה הסופית של האות הזאת?",
+    case_q:"איזו אות מתאימה?",
+    read_aloud:"קראו בקול, ואז לחצו",
+    ive_read:"קראתי", done_reading:"סיימתי לקרוא",
+    start_reading:"מתחילים לקרוא", read_n:"קריאה", of:"מתוך",
+    comp_q:"שאלת הבנה",
+    pause:"השהיה", resume:"המשך", quit:"יציאה",
+    // feedback
+    correct:"נכון", wrong:"לא נכון", it_was:"האות הייתה", it_was_w:"המילה הייתה",
+    break_title:"הפסקה קצרה",
+    break_body:"הקצב שלכם יורד. זה סימן לעייפות, לא לכישלון. אפשר לנוח דקה או לסיים להיום.",
+    break_rest:"נוח דקה", break_end:"סיום להיום", break_go:"ממשיכים בכל זאת",
+    // summary
+    sess_done:"האימון הושלם", accuracy:"דיוק", time:"זמן", points:"נקודות",
+    what_moved:"מה השתנה", nothing_yet:"עוד מעט נתונים ונוכל להראות מגמה.",
+    tomorrow:"מחר נשקיע יותר זמן ב", done:"סיום",
+    // progress
+    reading_speed:"מהירות קריאה", wpm:"מילים בדקה",
+    slope:"האטה לכל אות", slope_u:"מילישניות לאות",
+    slope_help:"זה המספר שמתאר את ההפרעה עצמה: כמה זמן נוסף לוקחת כל אות נוספת במילה. נמוך יותר = טוב יותר.",
+    comprehension:"הבנה", letters_mastered:"אותיות שנשלטו",
+    letter_mastery:"שליטה באותיות", confusions:"בלבולים נפוצים",
+    no_data:"אין עדיין נתונים. התחילו במדידת קריאה.",
+    history:"היסטוריית אימונים", sessions:"אימונים", total_trials:"סך תרגולים",
+    honest_1:"שיפור במהירות קריאה נמדד בחודשים, לא בימים.",
+    // settings
+    appearance:"תצוגת קריאה", font:"גופן", size:"גודל", tracking:"רווח בין אותיות",
+    leading:"רווח בין שורות", theme:"ערכת צבעים",
+    th_light:"בהיר", th_dark:"כהה", th_contrast:"ניגודיות גבוהה",
+    f_sans:"רגיל", f_serif:"מסורתי", f_round:"עגול", f_mono:"אחיד",
+    nikud:"ניקוד", nikud_on:"עם ניקוד", nikud_off:"בלי ניקוד",
+    nikud_note:"ניקוד מוסיף פרטים קטנים מתחת לאותיות. לחלק מהאנשים זה מקשה. אפשר להשוות בעצמכם.",
+    language:"שפת האימון", switch_lang:"מעבר לאנגלית",
+    switch_note:"האפליקציה עוברת כולה לאנגלית. ההתקדמות בעברית נשמרת בנפרד ומחכה לכם.",
+    reset:"איפוס כל הנתונים", reset_confirm:"למחוק את כל ההתקדמות בעברית ובאנגלית? אי אפשר לבטל.",
+    reset_yes:"כן, מחק", cancel:"ביטול", close:"סגירה",
+    about:"על האפליקציה",
+    about_body:"לקסיה היא כלי תרגול לאלקסיה טהורה — קריאה אות אחר אות אחרי פגיעה מוחית. היא לא מאבחנת, לא מחליפה קלינאי תקשורת, ולא מבטיחה החלמה. התרגילים כאן מבוססים על הספרות המקצועית הקיימת, שהיא דלה: קריאה חוזרת ומעקב באצבע נחקרו הכי הרבה; תרגילי ההבזק והשורשים הם השערה סבירה שטרם הוכחה.",
+    grade_v:"נחקר", grade_x:"ניסיוני",
+    // assessment
+    as_title:"מדידת קריאה", as_intro:"תוצג מילה. ברגע שקראתם אותה — לחצו על הכפתור הגדול. אחר כך תבחרו איזו מילה זו הייתה. אין צורך למהר יותר מדי; פשוט טבעי.",
+    as_begin:"מתחילים", as_running:"מילה", as_result:"תוצאות המדידה",
+    as_slope_line:"כל אות נוספת במילה מוסיפה לכם",
+    as_ms:"מילישניות", as_acc:"דיוק זיהוי",
+    as_read_title:"עכשיו קטע קצר", as_read_intro:"קראו את הקטע בקול, בקצב שלכם. לחצו כשסיימתם.",
+    as_saved:"המדידה נשמרה", as_compare:"לעומת המדידה הקודמת",
+    as_first:"זו המדידה הראשונה שלכם. היא נקודת ההשוואה לכל מה שיבוא.",
+    // misc
+    xp:"נקודות", level:"רמה", back:"חזרה", next:"הבא",
+    free_read:"קריאה חופשית", free_read_sub:"בלי מדידה, בלי ניקוד. פשוט טקסט.",
+    paste_here:"הדביקו כאן טקסט משלכם — הודעה, טופס, תווית",
+    show_it:"הצגה", empty_lib:"אין עדיין טקסטים. הדביקו משהו שאתם רוצים להצליח לקרוא.",
+    lb_letters:["אלף","בית","גימל","דלת","הא","וו","זין","חית","טית","יוד","כף","למד","מם","נון","סמך","עין","פא","צדי","קוף","ריש","שין","תו"],
+    listen:"הקראה", stop_listen:"עצירה",
+    voice:"הקראה קולית", voice_on:"מופעלת", voice_off:"כבויה",
+    voice_auto:"הקראה אוטומטית של הוראות",
+    voice_auto_on:"אוטומטית", voice_auto_off:"רק בלחיצה",
+    voice_rate:"מהירות הדיבור", voice_test:"השמעת בדיקה",
+    voice_test_text:"שלום. אני אקרא לכם את ההוראות באפליקציה.",
+    voice_using:"קול בשימוש",
+    voice_none:"לא נמצא קול בעברית במכשיר הזה. אפשר להתקין קול עברי בהגדרות המכשיר, תחת נגישות או שפה ודיבור.",
+    voice_unsupported:"הדפדפן הזה לא תומך בהקראה קולית.",
+    version:"גרסה", update_ready:"עדכון מוכן. סגרו ופתחו את האפליקציה כדי לעבור לגרסה החדשה.",
+    offline_ready:"האפליקציה זמינה גם בלי אינטרנט.", install_hint:"להוספה למסך הבית: שיתוף ← הוספה למסך הבית.",
+    data:"הנתונים", export_csv:"ייצוא כל התרגולים (CSV)", export_json:"גיבוי מלא (JSON)",
+    export_sum:"סיכום למטפל (CSV)", copy_csv:"העתקה ללוח",
+    data_note:"הנתונים נשמרים במכשיר הזה בלבד ולא נשלחים לשום מקום. כדאי לייצא אחרי כל מפגש.",
+    data_rows:"תרגולים שנשמרו", data_where:"מקום השמירה", data_local:"בדפדפן במכשיר",
+    data_memory:"בזיכרון בלבד — יימחק ברענון", data_warn:"השמירה במכשיר לא עובדת כאן. פתחו את הקובץ בלשונית רגילה של הדפדפן, אחרת הנתונים יאבדו.",
+    copied:"הועתק", storage_full:"אחסון הדפדפן מלא. ייצאו את הנתונים ואז אפסו.",
+    resume_title:"אימון שלא הסתיים", resume_body:"הפסקתם באמצע אימון. להמשיך מאיפה שעצרתם?",
+    resume_yes:"המשך", resume_no:"התחלה מחדש",
+    all_open:"כל התרגילים פתוחים תמיד. השלב המומלץ הוא הצעה של האפליקציה, לא מנעול — אפשר לתרגל כל דבר, בכל סדר.",
+    recommended:"מומלץ עכשיו", whole_stage:"כל השלב", pick_exercise:"בחרו תרגיל",
+    build_title:"בניית אימון משלכם", selected:"נבחרו", start_selected:"התחלת האימון",
+    clear_sel:"ניקוי הבחירה", add_to:"הוספה לאימון", in_session:"באימון",
+    ex_done:"תרגולים", ex_acc:"דיוק", ex_new:"עוד לא תורגל",
+    length_short:"קצר", length_normal:"רגיל", length_long:"ארוך", session_length:"אורך האימון",
+    err_title:"דפוסי טעויות", err_none:"עוד אין מספיק טעויות כדי לזהות דפוס. זה בסדר גמור.",
+    err_dominant:"הדפוס העיקרי כרגע",
+    e_similar_letter:"בלבול בין אותיות דומות",
+    e_final_form:"אותיות סופיות",
+    e_letter_case:"אות גדולה מול קטנה",
+    e_morphology:"סיומות ונטיות",
+    e_truncation:"ההתחלה נכונה, הסוף אוזל",
+    e_word_onset:"תחילת המילה נעלמת",
+    e_letter_order:"סדר האותיות",
+    e_length:"אורך המילה",
+    e_unrelated:"תשובות לא קשורות",
+    e_unsure:"לא בטוח",
+    a_similar_letter:"נוסיף תרגילי אבחנה בדיוק בין הזוגות שמתבלבלים לכם.",
+    a_final_form:"נוסיף תרגול של הצורות הסופיות — ך ם ן ף ץ.",
+    a_letter_case:"נוסיף תרגול התאמה בין אות גדולה לקטנה.",
+    a_morphology:"האותיות נקראות נכון אבל הסיומת משתנה. נוסיף תרגול שורשים וסיומות.",
+    a_truncation:"זה הדפוס הקלאסי של קריאה אות אחר אות: ההתחלה נקראת והכוח אוזל לפני הסוף. נעבור למילים קצרות יותר ונאריך את זמן החשיפה.",
+    a_word_onset:"החלק הראשון של המילה מתפספס. נאריך את זמן החשיפה.",
+    a_letter_order:"האותיות נכונות אבל הסדר מתערבב.",
+    a_length:"אורך המילה לא נקלט במלואו.",
+    a_unrelated:"התשובות לא קשורות למה שהוצג — לרוב זה סימן לעייפות ולא לקושי. נקצר את האימונים.",
+    voice_silent:"אין קול", voice_fix:"מה לעשות",
+    voice_he_missing:"לא נמצא קול עברי במכשיר",
+    voice_he_why:"נמצאו רק קולות באנגלית. קול אנגלי שמנסה לקרוא עברית מדלג על האותיות שהוא לא מכיר ומקריא רק את המספרים — בדיוק ההקראה החלקית ששמעתם. לכן ההקראה בעברית מושבתת עד שיותקן קול עברי.",
+    voice_install:"התקנת קול עברי",
+    voice_i_ios:"הגדרות ← נגישות ← תוכן מדובר ← קולות ← עברית. אחרי ההורדה, חזרו לכאן ולחצו על השמעת בדיקה.",
+    voice_i_android:"הגדרות ← נגישות ← פלט טקסט לדיבור ← התקנת נתוני קול ← עברית. אחרי ההורדה, חזרו לכאן ולחצו על השמעת בדיקה.",
+    voice_i_mac:"הגדרות מערכת ← נגישות ← תוכן מדובר ← קול המערכת ← ניהול קולות ← עברית (Carmit). אחרי ההורדה, רעננו את הדף.",
+    voice_i_win:"הגדרות ← שעה ושפה ← שפה ואזור ← הוספת שפה ← עברית, עם חבילת הדיבור. אחרי ההתקנה, הפעילו מחדש את הדפדפן.",
+    voice_i_other:"התקינו קול עברי בהגדרות מערכת ההפעלה, תחת נגישות או שפה ודיבור.",
+    voice_force:"לנסות בכל זאת",
+    voice_force_note:"אם אתם יודעים שיש קול עברי במכשיר ואנחנו לא מזהים אותו, אפשר לאלץ ניסיון הקראה.",
+    voice_devices:"קולות שמותקנים במכשיר", voice_none_found:"לא נמצאו קולות כלל", voice_diag:"מצב", voice_ok:"עובד", voice_found:"קולות שנמצאו",
+    voice_press_test:"לחצו על השמעת בדיקה כדי לבדוק אם ההקראה עובדת אצלכם.",
+    voice_blocked:"ההקראה חסומה בתוך חלון התצוגה הזה. פתחו את הדף בלשונית נפרדת של הדפדפן — שם ההקראה תעבוד.",
+    voice_no_audio:"הבקשה להשמעה נשלחה אבל לא נשמע כלום. בדקו את עוצמת הקול ואת מצב ההשתקה, ונסו שוב.",
+    voice_note:"ההקראה מקריאה הוראות, משוב וסיכומים בלבד. היא לעולם לא תקריא את האות או המילה שאתם אמורים לזהות — זה היה מבטל את התרגיל.",
+    as_nofit:"לא הצלחנו למדוד הפעם",
+    as_nofit_sub:"זוהו מעט מדי מילים כדי לחשב את ההאטה לכל אות. זה קורה, במיוחד ביום עייף. הכול נשמר — אפשר לנסות שוב מתי שנוח לכם.",
+    too_fast:"זה היה מהר מדי כדי למדוד",
+    too_fast_sub:"נראה שהכפתור נלחץ לפני שהספקתם לקרוא. ננסה שוב — קראו בקול, בקצב שלכם.",
+    gate_he_speak:"עברית. לחצו כאן כדי להתאמן בעברית.",
+    gate_en_speak:"English. Tap here to practise in English."
+  },
+  en:{
+    dir:"ltr", name:"English",
+    app:"LEXIA",
+    tab_today:"Today", tab_program:"Practice", tab_progress:"Progress", tab_settings:"Settings",
+    greet:"Hello",
+    todays_session:"Today's session",
+    stage_of:"Stage", minutes:"minutes", exercises:"exercises",
+    start_session:"Start session", continue_session:"Continue session",
+    quick3:"Quick practice · 3 minutes", read_something:"Free reading",
+    streak_days:"day streak", week_goal:"This week",
+    run_assessment:"Reading measurement", run_assessment_sub:"About 6 minutes. Measures how much each extra letter slows you down.",
+    assessment_due:"Time for a new measurement",
+    s1:"Letter recognition", s1d:"Single letters, telling similar letters apart, finger tracing",
+    s2:"Word recognition", s2d:"Frequent words, flash exposure, sight words, upper and lower case",
+    s3:"Sentence reading", s3d:"Short sentences with comprehension questions",
+    s4:"Paragraph reading", s4d:"Reading the same passage aloud three times",
+    s5:"Real-world reading", s5d:"Your own text: messages, forms, labels",
+    locked:"", available:"Available", current:"Your stage",
+    ex_letter_flash:"Letter flash", ex_letter_discrim:"Find the letter", ex_trace:"Finger tracing",
+    ex_word_flash:"Word flash", ex_word_pick:"Choose the word", ex_root:"Word family",
+    ex_final:"Letter forms", ex_sentence:"Sentence and question", ex_mor:"Repeated reading",
+    ex_case:"Upper and lower case",
+    which_letter:"Which letter did you see?", which_word:"Which word did you see?",
+    find_letter:"Find the letter", not_sure:"Not sure",
+    trace_title:"Trace the letter and say it out loud",
+    trace_again:"Again", trace_next:"Next", trace_score:"Tracing accuracy",
+    root_q:"Which word does not belong to this family?",
+    final_q:"Which is the capital of this letter?",
+    case_q:"Which letter matches?",
+    read_aloud:"Read aloud, then tap",
+    ive_read:"I've read it", done_reading:"Done reading",
+    start_reading:"Start reading", read_n:"Read", of:"of",
+    comp_q:"Comprehension question",
+    pause:"Pause", resume:"Resume", quit:"Quit",
+    correct:"Correct", wrong:"Not quite", it_was:"The letter was", it_was_w:"The word was",
+    break_title:"Short break",
+    break_body:"Your pace is dropping. That's fatigue, not failure. Rest a minute, or stop for today.",
+    break_rest:"Rest a minute", break_end:"Stop for today", break_go:"Keep going anyway",
+    sess_done:"Session complete", accuracy:"Accuracy", time:"Time", points:"Points",
+    what_moved:"What moved", nothing_yet:"A little more data and we can show you a trend.",
+    tomorrow:"Tomorrow we'll spend more time on", done:"Done",
+    reading_speed:"Reading speed", wpm:"words per minute",
+    slope:"Slowdown per letter", slope_u:"milliseconds per letter",
+    slope_help:"This is the number that tracks the disorder itself: how much extra time each additional letter in a word costs you. Lower is better.",
+    comprehension:"Comprehension", letters_mastered:"Letters mastered",
+    letter_mastery:"Letter mastery", confusions:"Common confusions",
+    no_data:"No data yet. Start with a reading measurement.",
+    history:"Session history", sessions:"sessions", total_trials:"total practice items",
+    honest_1:"Reading speed changes over months, not days.",
+    appearance:"Reading appearance", font:"Typeface", size:"Size", tracking:"Letter spacing",
+    leading:"Line spacing", theme:"Theme",
+    th_light:"Light", th_dark:"Dark", th_contrast:"High contrast",
+    f_sans:"Sans", f_serif:"Serif", f_round:"Rounded", f_mono:"Even width",
+    nikud:"Vowel marks", nikud_on:"With vowel marks", nikud_off:"Without",
+    nikud_note:"Vowel marks add fine detail below the letters.",
+    language:"Practice language", switch_lang:"Switch to Hebrew",
+    switch_note:"The whole app switches to Hebrew. Your English progress is stored separately and stays where it is.",
+    reset:"Erase all data", reset_confirm:"Delete all progress in both Hebrew and English? This cannot be undone.",
+    reset_yes:"Yes, delete", cancel:"Cancel", close:"Close",
+    about:"About",
+    about_body:"LEXIA is a practice tool for pure alexia — letter-by-letter reading after brain injury. It does not diagnose, does not replace a speech and language therapist, and does not promise recovery. The exercises are drawn from a thin research literature: repeated reading and finger tracing are the best studied; the flash and word-family drills are reasonable but unproven.",
+    grade_v:"Studied", grade_x:"Experimental",
+    as_title:"Reading measurement", as_intro:"A word will appear. The moment you have read it, press the large button. Then choose which word it was. Don't rush — read at your natural pace.",
+    as_begin:"Begin", as_running:"Word", as_result:"Measurement results",
+    as_slope_line:"Each extra letter in a word costs you",
+    as_ms:"milliseconds", as_acc:"Recognition accuracy",
+    as_read_title:"Now a short passage", as_read_intro:"Read the passage aloud at your own pace. Tap when you finish.",
+    as_saved:"Measurement saved", as_compare:"Compared with your last measurement",
+    as_first:"This is your first measurement. It's the baseline everything else is compared against.",
+    xp:"points", level:"Level", back:"Back", next:"Next",
+    free_read:"Free reading", free_read_sub:"No timing, no scoring. Just text.",
+    paste_here:"Paste your own text here — a message, a form, a label",
+    show_it:"Show it", empty_lib:"Nothing saved yet. Paste something you want to be able to read.",
+    lb_letters:[],
+    listen:"Listen", stop_listen:"Stop",
+    voice:"Spoken instructions", voice_on:"On", voice_off:"Off",
+    voice_auto:"Read instructions aloud automatically",
+    voice_auto_on:"Automatic", voice_auto_off:"Only when I tap",
+    voice_rate:"Speaking rate", voice_test:"Play a test",
+    voice_test_text:"Hello. I will read the instructions in this app aloud to you.",
+    voice_using:"Voice in use",
+    voice_none:"No English voice was found on this device. You can add one in your device settings, under accessibility or language and speech.",
+    voice_unsupported:"This browser does not support spoken instructions.",
+    version:"Version", update_ready:"An update is ready. Close and reopen the app to switch to it.",
+    offline_ready:"This app works without an internet connection.", install_hint:"To add it to your home screen: Share → Add to Home Screen.",
+    data:"Data", export_csv:"Export all practice items (CSV)", export_json:"Full backup (JSON)",
+    export_sum:"Summary for a clinician (CSV)", copy_csv:"Copy to clipboard",
+    data_note:"Data is kept on this device only and is never sent anywhere. Export after each session.",
+    data_rows:"practice items stored", data_where:"Stored in", data_local:"this browser, on this device",
+    data_memory:"memory only — lost on refresh", data_warn:"On-device saving is not working here. Open the file in an ordinary browser tab, or your data will be lost.",
+    copied:"Copied", storage_full:"Browser storage is full. Export your data, then reset.",
+    resume_title:"Unfinished session", resume_body:"You stopped part-way through a session. Continue where you left off?",
+    resume_yes:"Continue", resume_no:"Start fresh",
+    all_open:"Every exercise is always open. The suggested stage is the app's recommendation, not a lock — practise anything, in any order.",
+    recommended:"Suggested now", whole_stage:"Whole stage", pick_exercise:"Choose an exercise",
+    build_title:"Build your own session", selected:"selected", start_selected:"Start session",
+    clear_sel:"Clear selection", add_to:"Add to session", in_session:"in session",
+    ex_done:"items practised", ex_acc:"accuracy", ex_new:"not practised yet",
+    length_short:"Short", length_normal:"Normal", length_long:"Long", session_length:"Session length",
+    err_title:"Error patterns", err_none:"Not enough errors yet to see a pattern. That is entirely fine.",
+    err_dominant:"Main pattern right now",
+    e_similar_letter:"Similar letters confused",
+    e_final_form:"Final letter forms",
+    e_letter_case:"Upper versus lower case",
+    e_morphology:"Endings and word forms",
+    e_truncation:"Right start, ran out",
+    e_word_onset:"Start of the word missed",
+    e_letter_order:"Letter order",
+    e_length:"Word length",
+    e_unrelated:"Unrelated answers",
+    e_unsure:"Not sure",
+    a_similar_letter:"We'll add discrimination drills for exactly the pairs that trip you.",
+    a_final_form:"We'll add practice on final letter forms.",
+    a_letter_case:"We'll add upper-to-lower case matching.",
+    a_morphology:"The letters are read correctly but the ending changes. We'll add stem and ending work.",
+    a_truncation:"This is the classic letter-by-letter signature: the start is decoded and capacity runs out before the end. We'll move to shorter words and lengthen the exposure.",
+    a_word_onset:"The first part of the word is being missed. We'll lengthen the exposure.",
+    a_letter_order:"The letters are right but the order gets scrambled.",
+    a_length:"The full length of the word is not registering.",
+    a_unrelated:"The answers are unrelated to what was shown, which usually means fatigue rather than difficulty. We'll shorten the sessions.",
+    voice_silent:"No sound", voice_fix:"What to do",
+    voice_he_missing:"No Hebrew voice on this device",
+    voice_he_why:"Only English voices were found. An English voice given Hebrew text skips every letter it cannot map and reads out only the numbers — exactly the partial speech you heard. Hebrew speech is therefore switched off until a Hebrew voice is installed.",
+    voice_install:"Install a Hebrew voice",
+    voice_i_ios:"Settings → Accessibility → Spoken Content → Voices → Hebrew. Come back and press Play a test.",
+    voice_i_android:"Settings → Accessibility → Text-to-speech output → Install voice data → Hebrew. Come back and press Play a test.",
+    voice_i_mac:"System Settings → Accessibility → Spoken Content → System Voice → Manage Voices → Hebrew (Carmit). Then reload this page.",
+    voice_i_win:"Settings → Time & Language → Language & region → Add a language → Hebrew, including the speech pack. Then restart the browser.",
+    voice_i_other:"Install a Hebrew voice in your operating system settings, under accessibility or language and speech.",
+    voice_force:"Try anyway",
+    voice_force_note:"If you know this device has a Hebrew voice and we failed to spot it, you can force an attempt.",
+    voice_devices:"Voices installed on this device", voice_none_found:"No voices found at all", voice_diag:"Status", voice_ok:"Working", voice_found:"Voices found",
+    voice_press_test:"Press Play a test to check whether speech works on your device.",
+    voice_blocked:"Speech is blocked inside this preview frame. Open the page in its own browser tab and it will work.",
+    voice_no_audio:"The audio request went through but nothing played. Check your volume and mute switch, then try again.",
+    voice_note:"Speech reads instructions, feedback and summaries only. It will never read out the letter or word you are being asked to recognise — that would defeat the exercise.",
+    as_nofit:"We couldn't measure it this time",
+    as_nofit_sub:"Too few words were recognised to work out the per-letter cost. That happens, especially on a tired day. Nothing is lost — try again whenever you like.",
+    too_fast:"That was too quick to measure",
+    too_fast_sub:"The button was pressed before you had time to read. Let's try again — read it aloud, at your own pace.",
+    gate_he_speak:"עברית. לחצו כאן כדי להתאמן בעברית.",
+    gate_en_speak:"English. Tap here to practise in English."
+  }
+};
+
+/* ---------- content: Hebrew ---------- */
+const HE = {
+  letters:["א","ב","ג","ד","ה","ו","ז","ח","ט","י","כ","ל","מ","נ","ס","ע","פ","צ","ק","ר","ש","ת"],
+  finals:{"כ":"ך","מ":"ם","נ":"ן","פ":"ף","צ":"ץ"},
+  confuse:{
+    "א":["ר","ת","ח","ק"],"ב":["כ","נ","פ","ם"],"ג":["נ","ז","י","ו"],"ד":["ר","ז","ך","ו"],
+    "ה":["ח","ת","ק","ר"],"ו":["ז","ן","י","ר"],"ז":["ו","ן","ג","ד"],"ח":["ה","ת","ז","ר"],
+    "ט":["ם","ס","מ","ע"],"י":["ו","ז","ן","ג"],"כ":["ב","פ","ר","ך"],"ל":["ך","ז","ג"],
+    "מ":["ט","ס","ם","ב"],"נ":["ג","ו","ן","ב"],"ס":["ם","ט","ע","מ"],"ע":["צ","ט","ס","ש"],
+    "פ":["ב","כ","ם","ף"],"צ":["ע","ץ","ק","ש"],"ק":["ה","צ","ר","פ"],"ר":["ד","ך","ו","ח"],
+    "ש":["ע","ט","ם"],"ת":["ה","ח","ם","א"],
+    "ך":["ד","ר","ל","ן"],"ם":["ס","ט","מ","ב"],"ן":["ו","ז","ר","ך"],"ף":["כ","ן","ך","פ"],"ץ":["צ","ן","ך","ע"]
+  },
+  words:{
+    3:["ראש","עין","כתף","בטן","רגל","עור","אמא","אבא","סבא","דוד","נכד","ילד","איש","חבר","לחם","חלב","בשר","עוף","מרק","סלט","דבש","מלח","שמן","יין","מים","קפה","מיץ","אגס","תמר","זית","בצל","שום","גזר","בית","חדר","חצר","דלת","מדף","סיר","כוס","עיר","כפר","שוק","בנק","נמל","שדה","נהר","אגם","יער","פרח","עלה","דשא","נהג","שכן","זמר","יום","שנה","ערב","שעה","דקה","רגע","מחר","שבת","קיץ","כתב","קרא","אכל","שתה","הלך","נתן","לקח","אמר","שאל","ענה","מצא","פתח","סגר","ישב","ראה","שמע","חשב","זכר","שכח","אהב","עבד","למד","נסע","עזר","קנה","מכר","קטן","טוב","יפה","חדש","ישן","קצר","מלא","ריק","נקי","חזק","חלש","כבד","רחב","שמח","רעב","צמא","ספר","בול","מחק","תיק","לוח","גיר","מסך","כסף","נעל","גרב","דבר","אור","קול","רעש","שקט","רוח","גשם","שלג","שמש","ענן","פחד","כעס","סוד","אמת","שקר","ארץ","כלב","סוס","פרה","פיל","קוף"],
+    4:["פנים","אוזן","לשון","אצבע","שיער","סבתא","אחות","דודה","נכדה","ילדה","אישה","חברה","חמאה","ביצה","אורז","פסטה","עוגה","ריבה","סוכר","פלפל","תפוח","בננה","תירס","תפוז","מלון","דירה","מטבח","סלון","גינה","חלון","מיטה","כיסא","ארון","שטיח","מקרר","תנור","צלחת","מזלג","סכין","מגבת","סבון","מראה","רחוב","כביש","חנות","קופה","דואר","רופא","תחנה","רכבת","מטוס","מדבר","עצים","מורה","שוטר","מוכר","פקיד","גננת","שכנה","מנהל","סופר","צייר","שחקן","שבוע","חודש","בוקר","לילה","היום","חורף","אביב","סתיו","דיבר","לימד","שיחק","חיכה","שילם","בישל","ניקה","כיבס","גדול","ארוך","גבוה","נמוך","מהיר","איטי","עצוב","עייף","מכתב","סרגל","מחשב","רדיו","שעון","ארנק","מפתח","כובע","מעיל","שמלה","צעיף","מתנה","מרשם","משחה","מסרק","מקום","שמים","אדמה","שלום","אהבה","חלום","הצגה","טיול","חופש","מבחן","ציון","כיתה","קורס","כנסת","עולם","גבול","חתול","כבשה","אריה","עכבר","זבוב","נמלה","פרפר"],
+    5:["צוואר","ידיים","משפחה","הורים","ילדים","חברים","גבינה","ביצים","ענבים","זיתים","אפונה","לימון","אבטיח","שקדים","בניין","מרפסת","שולחן","מנורה","וילון","מעלית","שכונה","מכולת","מרפאה","רופאה","פרחים","מורים","תלמיד","מוכרת","מהנדס","טכנאי","מנהלת","אתמול","ספרים","עיתון","מעטפה","גלויה","מחברת","ילקוט","טלפון","מקלדת","מטריה","חולצה","חצאית","סוודר","כפפות","תמונה","מצלמה","תרמיל","כרטיס","תרופה","מברשת","מלחמה","עבודה","מסיבה","תעודה","שיעור","הפסקה","מכללה","הרצאה","ממשלה","חדשות","מדינה","מסעדה","מקלחת","ציפור","דבורה","אחיות","חולים","שכנים","חברות","דירות","תחנות","טפסים","קבלות"],
+    6:["עיניים","שיניים","רגליים","לחמניה","מלפפון","עגבניה","אגוזים","קומקום","מדרגות","ספרייה","מכונית","תלמידה","מזכירה","צהריים","מלוכלך","עיפרון","נעליים","גרביים","מזוודה","קונצרט","תערוכה","תחבורה","מסעדות","אמבטיה","מחשבון","מוזיקה","ספריות","מרפאות","תרופות","מכתבים","מעטפות","מחברות","תמונות","מצלמות","טכנאים","פקידים","סופרים","ציירים","שחקנים","שוטרים","מוכרים","מנהלים","רופאים","מבקרים","אורחים","משפחות","מעליות","שכונות","רחובות","כבישים","חנויות","הפסקות","מבחנים","ציונים","תעודות","מכללות","קורסים","הרצאות","הוראות","מרשמים","בדיקות","תוצאות","הודעות","מסמכים","מקררים","מזגנים","מחשבים"],
+    7:["אוזניים","מוזיאון","אוטובוס","אופניים","תלמידים","עיתונאי","מכנסיים","משקפיים","לימודים","תרנגולת","מכוניות","תלמידות","עגבניות","עיתונים","עפרונות","מזוודות","כרטיסים","מהנדסים","מזכירות","בניינים","שיעורים","סמסטרים","מסעדנים","חשבונות","תשלומים","תזכורות","אמבטיות","תערוכות","טלפונים"],
+    8:["טלוויזיה","סופרמרקט","מלפפונים","עיתונאים","מחשבונים","קונצרטים","אופנועים","פסיכולוג","אלקטרוני"]
+  },
+  nikud:{
+    "אני":"אֲנִי","היה":"הָיָה","כמו":"כְּמוֹ","אבל":"אֲבָל","יום":"יוֹם","ילד":"יֶלֶד","בית":"בַּיִת",
+    "אמא":"אִמָּא","אבא":"אַבָּא","ראש":"רֹאשׁ","ספר":"סֵפֶר","דלת":"דֶּלֶת","שמש":"שֶׁמֶשׁ","מים":"מַיִם",
+    "לחם":"לֶחֶם","חלב":"חָלָב","כלב":"כֶּלֶב","חבר":"חָבֵר","עיר":"עִיר","ארץ":"אֶרֶץ","טוב":"טוֹב",
+    "יפה":"יָפֶה","אור":"אוֹר","ערב":"עֶרֶב","שנה":"שָׁנָה","זמן":"זְמַן","דרך":"דֶּרֶךְ","כסף":"כֶּסֶף",
+    "שוק":"שׁוּק","חתול":"חָתוּל","בוקר":"בּוֹקֶר","לילה":"לַיְלָה","שולחן":"שׁוּלְחָן","מקום":"מָקוֹם",
+    "חלון":"חַלּוֹן","מיטה":"מִיטָה","מורה":"מוֹרֶה","רופא":"רוֹפֵא","גדול":"גָּדוֹל","קטן":"קָטָן",
+    "עלה":"עָלֶה","פרח":"פֶּרַח","גשם":"גֶּשֶׁם","קול":"קוֹל","עין":"עַיִן","רגל":"רֶגֶל","שיר":"שִׁיר"
+  },
+  roots:[
+    {r:"כ.ת.ב", in:["כתב","מכתב","כתובת","כתיבה","כותב"], out:["ספר","דלת","חלון","מים"]},
+    {r:"ל.מ.ד", in:["למד","תלמיד","לימוד","מלמד","לומד"], out:["רופא","שולחן","גשם","עיר"]},
+    {r:"ס.פ.ר", in:["ספר","סיפור","ספרייה","מספר","סופר"], out:["חלב","מטוס","ערב","כלב"]},
+    {r:"א.כ.ל", in:["אכל","אוכל","מאכל","אכילה","אוכלת"], out:["מכתב","ציפור","רחוב","שנה"]},
+    {r:"ד.ב.ר", in:["דיבר","דבר","מדבר","דיבור","מדברת"], out:["תפוח","מיטה","בוקר","יער"]},
+    {r:"ה.ל.כ", in:["הלך","מהלך","הליכה","הולך","תהלוכה"], out:["גבינה","מקרר","שמש","ילדה"]},
+    {r:"ר.א.ה", in:["ראה","מראה","ראייה","נראה","רואה"], out:["כביש","לחם","מורה","חנות"]},
+    {r:"י.ש.ב", in:["ישב","מושב","ישיבה","יושב","תושב"], out:["אוטו","פרח","מסיבה","דלת"]},
+    {r:"ק.ר.א", in:["קרא","קורא","קריאה","מקרא","נקרא"], out:["חתול","כיסא","שוק","רכבת"]},
+    {r:"ע.ב.ד", in:["עבד","עובד","עבודה","מעבד","עובדת"], out:["תרופה","נהר","מטבח","בננה"]},
+    {r:"ש.מ.ר", in:["שמר","שומר","שמירה","משמרת","נשמר"], out:["טלפון","אדמה","ילד","חלון"]},
+    {r:"ל.ב.ש", in:["לבש","לובש","מלבוש","לבוש","התלבש"], out:["מקום","ביצה","עיתון","סוס"]}
+  ],
+  sentences:[
+    {t:"הילד שתה כוס מים קרים.", q:"מה הילד שתה?", a:["מים","חלב","קפה","מיץ"], c:0},
+    {t:"אמא קנתה לחם טרי בחנות.", q:"מה אמא קנתה?", a:["לחם","חלב","ספר","פרחים"], c:0},
+    {t:"הכלב ישן על השטיח בסלון.", q:"איפה ישן הכלב?", a:["בסלון","במטבח","בחצר","בחדר"], c:0},
+    {t:"בבוקר ירד גשם חזק ברחוב.", q:"מתי ירד הגשם?", a:["בבוקר","בערב","בלילה","בצהריים"], c:0},
+    {t:"סבתא סיפרה לנו סיפור ארוך.", q:"מי סיפרה את הסיפור?", a:["סבתא","אמא","המורה","החבר"], c:0},
+    {t:"האוטובוס איחר בעשר דקות.", q:"כמה זמן איחר האוטובוס?", a:["עשר דקות","חמש דקות","שעה","רבע שעה"], c:0},
+    {t:"הרופא ביקש שאשתה הרבה מים.", q:"מה ביקש הרופא?", a:["לשתות מים","לנוח","לקחת תרופה","ללכת הביתה"], c:0},
+    {t:"הילדים שיחקו בכדור בגינה.", q:"במה שיחקו הילדים?", a:["בכדור","בחול","במחשב","בקלפים"], c:0},
+    {t:"קניתי עיתון בדוכן ליד התחנה.", q:"מה קניתי?", a:["עיתון","ספר","קפה","כרטיס"], c:0},
+    {t:"החתול הלבן ישב על החלון.", q:"איזה צבע החתול?", a:["לבן","שחור","אפור","חום"], c:0}
+  ],
+  passages:[
+    {id:"he-p1", title:"האוטובוס בבוקר",
+     body:["האוטובוס עוצר ליד השוק כל בוקר. הנהג מכיר את רוב האנשים שמחכים שם.",
+           "הם מדברים על מזג האוויר ועל המחירים בשוק. אחרי כמה דקות האוטובוס ממשיך בדרכו."],
+     q:[{q:"איפה עוצר האוטובוס?",a:["ליד השוק","ליד בית הספר","ליד התחנה המרכזית","ליד הים"],c:0},
+        {q:"על מה מדברים האנשים?",a:["מזג האוויר ומחירים","פוליטיקה","ספורט","עבודה"],c:0},
+        {q:"מי מכיר את האנשים?",a:["הנהג","המוכר","השוטר","המורה"],c:0}]},
+    {id:"he-p2", title:"הבוקר של דנה",
+     body:["דנה קמה בשבע בבוקר. היא שותה קפה וקוראת את החדשות.",
+           "אחר כך היא יוצאת לעבודה ברגל. הדרך לוקחת עשרים דקות."],
+     q:[{q:"מתי דנה קמה?",a:["בשבע","בשש","בשמונה","בתשע"],c:0},
+        {q:"איך דנה מגיעה לעבודה?",a:["ברגל","באוטובוס","במכונית","ברכבת"],c:0},
+        {q:"כמה זמן לוקחת הדרך?",a:["עשרים דקות","עשר דקות","חצי שעה","שעה"],c:0}]},
+    {id:"he-p3", title:"ארוחת ערב",
+     body:["בערב המשפחה יושבת יחד ליד השולחן. אמא מביאה את האוכל והילדים מספרים על היום שלהם.",
+           "אחרי הארוחה כולם עוזרים לסדר את המטבח. אחר כך אפשר לשבת בסלון ולנוח."],
+     q:[{q:"מי מביאה את האוכל?",a:["אמא","אבא","הילדים","סבתא"],c:0},
+        {q:"מה קורה אחרי הארוחה?",a:["מסדרים את המטבח","הולכים לישון","יוצאים לטיול","צופים בטלוויזיה"],c:0},
+        {q:"על מה מספרים הילדים?",a:["על היום שלהם","על סרטים","על חברים","על בית הספר"],c:0}]},
+    {id:"he-p4", title:"ההליכה בשכונה",
+     body:["בכל יום שישי אני יוצא להליכה ארוכה בשכונה. אני עובר ליד הגן ואחר כך ליד המכולת.",
+           "לפעמים אני נעצר לקנות עיתון. בדרך חזרה אני שותה קפה על הספסל ליד הבית."],
+     q:[{q:"באיזה יום ההליכה?",a:["שישי","ראשון","שבת","שלישי"],c:0},
+        {q:"מה הוא קונה לפעמים?",a:["עיתון","לחם","פרחים","חלב"],c:0},
+        {q:"איפה הוא שותה קפה?",a:["על הספסל ליד הבית","במכולת","בגן","בבית קפה"],c:0}]}
+  ],
+  gen:{
+    subjects:[
+      {d:"הילד",g:"ms",p:"הוא"},{d:"הילדה",g:"fs",p:"היא"},
+      {d:"הילדים",g:"mp",p:"הם"},{d:"הילדות",g:"fp",p:"הן"},
+      {d:"אמא",g:"fs",p:"היא"},{d:"אבא",g:"ms",p:"הוא"},
+      {d:"סבתא",g:"fs",p:"היא"},{d:"סבא",g:"ms",p:"הוא"},
+      {d:"המורה",g:"ms",p:"הוא"},{d:"הרופא",g:"ms",p:"הוא"},{d:"הרופאה",g:"fs",p:"היא"},
+      {d:"השכן",g:"ms",p:"הוא"},{d:"השכנה",g:"fs",p:"היא"},
+      {d:"החבר",g:"ms",p:"הוא"},{d:"החברה",g:"fs",p:"היא"},
+      {d:"הנהג",g:"ms",p:"הוא"},{d:"המוכר",g:"ms",p:"הוא"},
+      {d:"האיש",g:"ms",p:"הוא"},{d:"האישה",g:"fs",p:"היא"},
+      {d:"התלמיד",g:"ms",p:"הוא"},{d:"התלמידה",g:"fs",p:"היא"},
+      {d:"התלמידים",g:"mp",p:"הם"},{d:"השכנים",g:"mp",p:"הם"},
+      {d:"החברים",g:"mp",p:"הם"},{d:"האנשים",g:"mp",p:"הם"},
+      {d:"התלמידות",g:"fp",p:"הן"},{d:"השכנות",g:"fp",p:"הן"},
+      {d:"החברות",g:"fp",p:"הן"},{d:"הבנות",g:"fp",p:"הן"},
+      {d:"הכלב",g:"ms",p:"הוא"},{d:"החתול",g:"ms",p:"הוא"}
+    ],
+    verbs:[
+      {ms:"שתה",fs:"שתתה",mp:"שתו",fp:"שתו",c:"drink"},
+      {ms:"אכל",fs:"אכלה",mp:"אכלו",fp:"אכלו",c:"food"},
+      {ms:"קנה",fs:"קנתה",mp:"קנו",fp:"קנו",c:"buy"},
+      {ms:"קרא",fs:"קראה",mp:"קראו",fp:"קראו",c:"read"},
+      {ms:"מצא",fs:"מצאה",mp:"מצאו",fp:"מצאו",c:"thing"},
+      {ms:"ראה",fs:"ראתה",mp:"ראו",fp:"ראו",c:"thing"},
+      {ms:"פתח",fs:"פתחה",mp:"פתחו",fp:"פתחו",c:"open"},
+      {ms:"סגר",fs:"סגרה",mp:"סגרו",fp:"סגרו",c:"open"},
+      {ms:"שכח",fs:"שכחה",mp:"שכחו",fp:"שכחו",c:"thing"},
+      {ms:"הביא",fs:"הביאה",mp:"הביאו",fp:"הביאו",c:"thing"},
+      {ms:"לקח",fs:"לקחה",mp:"לקחו",fp:"לקחו",c:"thing"},
+      {ms:"כתב",fs:"כתבה",mp:"כתבו",fp:"כתבו",c:"write"}
+    ],
+    objects:{
+      drink:["כוס מים","כוס תה","קפה","מיץ תפוזים","כוס חלב","תה קר"],
+      food:["לחם טרי","עוגה","תפוח","מרק חם","גבינה","ביצה","סלט"],
+      buy:["עיתון","לחם","פרחים","חלב","נעליים","מתנה","כרטיס"],
+      read:["ספר","עיתון","מכתב","סיפור","שלט","הוראות"],
+      thing:["מפתח","ארנק","טלפון","משקפיים","מטריה","תיק","מעיל"],
+      open:["הדלת","החלון","המקרר","הארון","השער"],
+      write:["מכתב","רשימה","הודעה","פתק"]
+    },
+    defCats:["open"],
+    places:["בבית","במטבח","בגן","ברחוב","בחנות","בגינה","בסלון","במרפאה","בשוק","בספרייה","בחצר","במרפסת"],
+    times:["בבוקר","בערב","בצהריים","אתמול","היום","בשבת","בלילה","לפני שבוע"],
+    joins:["אחר כך","אחרי זה","בסוף"],
+    q:{what:"מה",who:"מי",where:"איפה",when:"מתי"}
+  },
+
+  probeWords:{
+    3:["ראש","עין","כתף","בטן","רגל","עור"],
+    4:["פנים","אוזן","לשון","אצבע","שיער","סבתא"],
+    5:["צוואר","ידיים","משפחה","הורים","ילדים","חברים"],
+    6:["עיניים","שיניים","רגליים","לחמניה","מלפפון","עגבניה"],
+    7:["אוזניים","מוזיאון","אוטובוס","אופניים","תלמידים","עיתונאי"],
+    8:["טלוויזיה","סופרמרקט","מלפפונים","עיתונאים","מחשבונים","קונצרטים"]
+  },
+  probePassage:{
+    title:"קטע מדידה",
+    body:["בכל שבוע אנחנו הולכים לשוק הגדול שליד התחנה. יש שם דוכנים של פירות וירקות, וגם חנות קטנה של גבינות.",
+          "אנחנו קונים לחם טרי, קצת עגבניות ומלפפונים, ולפעמים גם פרחים לשולחן. בדרך חזרה אנחנו עוצרים לשתות קפה על הספסל שליד הבית, ומדברים על השבוע שהיה."],
+    words:44
+  }
+}
+
+/* ---------- content: English ---------- */
+const EN = {
+  letters:["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"],
+  confuse:{
+    a:["o","e","c","s"],b:["d","p","h","o"],c:["e","o","a","s"],d:["b","p","cl","a"],
+    e:["c","a","o","s"],f:["t","r","l","i"],g:["q","y","p","a"],h:["n","b","k","m"],
+    i:["l","j","t","r"],j:["i","g","y","f"],k:["x","h","b","r"],l:["i","t","j","f"],
+    m:["n","w","h","rn"],n:["m","h","r","u"],o:["c","e","a","q"],p:["q","b","g","d"],
+    q:["g","p","o","y"],r:["n","v","f","i"],s:["z","c","e","a"],t:["f","l","i","r"],
+    u:["v","n","o","w"],v:["u","w","y","r"],w:["v","m","u","n"],x:["k","y","z","v"],
+    y:["v","g","j","x"],z:["s","x","n","e"]
+  },
+  words:{
+    3:["the","and","you","for","are","but","not","can","all","day","get","new","now","old","one","our","out","see","two","way","who","boy","car","cat","dog","eat","red","run","sun","top","big","box","cup","end","job","key","man","map","pay","put","sit","ten","try","win","yes","bed","cut","hot","let","ask","arm","bag","bus","egg","fun","gas","hat","ice","law","leg","lot","oil","pen","sea","son","tea","war","air","bar","bit","cap","cow","dry","ear","eye","fit","gun","hit","ill","kid","lip","mud","nut","oak","pot","rat","rug","six","sky","tax","tie","van","wet","zoo"],
+    4:["time","year","work","life","hand","part","back","word","week","case","home","book","room","door","city","name","road","food","rain","tree","blue","fire","hope","idea","kind","land","line","list","look","love","mind","move","near","need","note","open","page","park","plan","play","rest","ride","ring","rock","safe","ship","shop","show","side","sign","size","snow","song","star","stop","tell","test","town","turn","view","wait","walk","wall","wind","wish","bank","bath","bell","bird","boat","bone","busy","calm","card","care","cash","chef","club","coat","cold","cook","cool","corn","cost","dark","dear","deep","desk","dish","dust","easy","fact","fall","farm","fast","feel","find","fish","flat","foot","four","free","full","game","girl","give","glad","goal","gold","good","grow","half","head","hear","heat","help","hill","hold","hour","huge","join","jump","keep","lamp","late","leaf","left","lift","like","long","lose","loud","mail","main","meal","meat","meet","melt","mild","milk","mile"],
+    5:["about","other","which","their","would","there","could","first","after","where","think","three","place","right","small","sound","still","water","world","house","night","story","group","money","month","music","north","party","phone","point","power","price","radio","river","round","sense","share","sleep","south","space","sport","stage","start","state","table","teach","thank","today","train","under","until","value","video","visit","voice","watch","white","whole","woman","write","young","apple","beach","bread","bring","chair","clean","clear","climb","cloud","dance","dream","dress","drink","drive","early","earth","empty","every","field","fight","floor","fresh","front","fruit","glass","grass","green","happy","heart","heavy","horse","hotel","human","learn","light","local","lunch","march","match","metal","mouth","movie","never","noise","often","order","paper","peace","piece","plant","plate","quick","quiet","reach","ready","rough"],
+    6:["people","before","should","around","little","number","school","family","system","become","better","change","course","effect","energy","enough","figure","follow","ground","growth","health","income","inside","itself","letter","market","matter","member","method","minute","moment","mother","nature","notice","office","orange","parent","period","person","police","policy","public","reason","record","region","remain","report","result","return","season","second","series","simple","single","social","source","spring","street","strong","summer","target","theory","though","travel","unique","valley","window","winter","wonder","worker","writer","animal","answer","autumn","basket","bottle","bridge","butter","camera","candle","carpet","centre","church","circle","clever","coffee","corner","cotton","doctor","dollar","double","engine","expect","finger","flower","forest","forget","garden","golden","guitar","handle","happen","island","jacket","jungle","kitten","ladder","laptop","listen","mirror","modern","muscle","napkin","narrow","object","pencil","pepper","pocket","pretty","prince","rabbit","repair","rescue","ribbon","rubber","saddle","salmon","sample","shadow","silver","sister","smooth","soccer","spirit","spread","square","stable","statue","steady","stream","string","studio","supply","switch","symbol"],
+    7:["because","between","through","another","against","without","general","however","morning","nothing","present","program","provide","quality","receive","respect","science","service","similar","society","special","station","subject","support","teacher","thought","various","village","weather","whether","working","writing","picture","kitchen","holiday","evening","brother","hundred","library","machine","natural","opinion","perhaps","popular","problem","purpose","country","company","develop","already","balance","bedroom","blanket","bracket","careful","ceiling","certain","chicken","clothes","compass","concert","cottage","crystal","curtain","dessert","diamond","drawing","exactly","example","excited","factory","feather","fifteen","fishing","gallery","gateway","grocery","harvest"],
+    8:["business","children","computer","consider","continue","distance","economic","evidence","exchange","exercise","football","hospital","industry","interest","language","learning","material","medicine","military","mountain","movement","national","personal","physical","position","possible","practice","pressure","probably","property","question","research","resource","response","security","sentence","southern","standard","strength","students","suddenly","together","tomorrow","training","whatever","yourself","daughter","shoulder","addition","airplane","audience","birthday","building","calendar","campaign","carriage","ceremony","champion","cupboard","darkness","daylight","delivery","describe","designer","detailed","dialogue","directly","disagree","discount","division","doorbell","dressing","entrance","envelope","estimate"]
+  },
+  sentences:[
+    {t:"The boy drank a glass of cold water.", q:"What did the boy drink?", a:["Water","Milk","Coffee","Juice"], c:0},
+    {t:"Mother bought fresh bread at the shop.", q:"What did mother buy?", a:["Bread","Milk","A book","Flowers"], c:0},
+    {t:"The dog slept on the rug in the living room.", q:"Where did the dog sleep?", a:["The living room","The kitchen","The garden","The bedroom"], c:0},
+    {t:"Heavy rain fell in the street this morning.", q:"When did the rain fall?", a:["Morning","Evening","Night","Noon"], c:0},
+    {t:"Grandmother told us a long story.", q:"Who told the story?", a:["Grandmother","Mother","The teacher","A friend"], c:0},
+    {t:"The bus was ten minutes late.", q:"How late was the bus?", a:["Ten minutes","Five minutes","An hour","A quarter hour"], c:0},
+    {t:"The doctor asked me to drink more water.", q:"What did the doctor ask?", a:["Drink more water","Rest","Take a pill","Go home"], c:0},
+    {t:"The children played with a ball in the garden.", q:"What did they play with?", a:["A ball","Sand","A computer","Cards"], c:0},
+    {t:"I bought a paper at the stand near the station.", q:"What did I buy?", a:["A paper","A book","Coffee","A ticket"], c:0},
+    {t:"The white cat sat on the window sill.", q:"What colour was the cat?", a:["White","Black","Grey","Brown"], c:0}
+  ],
+  passages:[
+    {id:"en-p1", title:"The morning bus",
+     body:["The bus stops near the old market every morning. The driver knows most of the people who wait there.",
+           "They talk about the weather and the price of bread. After a few minutes the bus moves on."],
+     q:[{q:"Where does the bus stop?",a:["Near the market","Near the school","At the main station","By the sea"],c:0},
+        {q:"What do the people talk about?",a:["Weather and prices","Politics","Sport","Work"],c:0},
+        {q:"Who knows the people?",a:["The driver","The shopkeeper","A police officer","A teacher"],c:0}]},
+    {id:"en-p2", title:"Dana's morning",
+     body:["Dana wakes at seven in the morning. She drinks coffee and reads the news.",
+           "Then she walks to work. The walk takes about twenty minutes."],
+     q:[{q:"When does Dana wake?",a:["Seven","Six","Eight","Nine"],c:0},
+        {q:"How does Dana get to work?",a:["She walks","By bus","By car","By train"],c:0},
+        {q:"How long does the walk take?",a:["Twenty minutes","Ten minutes","Half an hour","An hour"],c:0}]},
+    {id:"en-p3", title:"Dinner",
+     body:["In the evening the family sits together at the table. Mother brings the food and the children talk about their day.",
+           "After the meal everyone helps to clean the kitchen. Then they can sit in the living room and rest."],
+     q:[{q:"Who brings the food?",a:["Mother","Father","The children","Grandmother"],c:0},
+        {q:"What happens after the meal?",a:["They clean the kitchen","They go to bed","They go out","They watch television"],c:0},
+        {q:"What do the children talk about?",a:["Their day","Films","Friends","School"],c:0}]},
+    {id:"en-p4", title:"The walk",
+     body:["Every Friday I go for a long walk around the neighbourhood. I pass the park and then the corner shop.",
+           "Sometimes I stop to buy a paper. On the way home I drink coffee on the bench near my door."],
+     q:[{q:"Which day is the walk?",a:["Friday","Sunday","Saturday","Tuesday"],c:0},
+        {q:"What does he sometimes buy?",a:["A paper","Bread","Flowers","Milk"],c:0},
+        {q:"Where does he drink coffee?",a:["On the bench near his door","At the shop","In the park","In a cafe"],c:0}]}
+  ],
+  gen:{
+    subjects:[
+      {d:"The boy",p:"he"},{d:"The girl",p:"she"},{d:"The children",p:"they"},
+      {d:"Mother",p:"she"},{d:"Father",p:"he"},{d:"Grandmother",p:"she"},
+      {d:"Grandfather",p:"he"},{d:"The teacher",p:"she"},{d:"The doctor",p:"he"},
+      {d:"The neighbour",p:"he"},{d:"My friend",p:"she"},{d:"The driver",p:"he"},
+      {d:"The man",p:"he"},{d:"The woman",p:"she"},{d:"The students",p:"they"},
+      {d:"The nurse",p:"she"},{d:"The dog",p:"it"},{d:"The cat",p:"it"}
+    ],
+    verbs:[
+      {v:"drank",b:"drink",c:"drink"},{v:"ate",b:"eat",c:"food"},
+      {v:"bought",b:"buy",c:"buy"},{v:"read",b:"read",c:"read"},
+      {v:"found",b:"find",c:"thing"},{v:"saw",b:"see",c:"thing"},
+      {v:"opened",b:"open",c:"open"},{v:"closed",b:"close",c:"open"},
+      {v:"forgot",b:"forget",c:"thing"},{v:"brought",b:"bring",c:"thing"},
+      {v:"took",b:"take",c:"thing"},{v:"wrote",b:"write",c:"write"}
+    ],
+    objects:{
+      drink:["a glass of water","a cup of tea","black coffee","orange juice","a glass of milk"],
+      food:["fresh bread","a slice of cake","an apple","hot soup","cheese","an egg","a salad"],
+      buy:["a newspaper","bread","flowers","milk","new shoes","a present","a ticket"],
+      read:["a book","the newspaper","a letter","a long story","the sign","the instructions"],
+      thing:["the key","a wallet","the phone","the glasses","an umbrella","a bag","a coat"],
+      open:["the door","the window","the fridge","the cupboard","the gate"],
+      write:["a letter","a list","a message","a note"]
+    },
+    places:["at home","in the kitchen","in the garden","in the street","at the shop",
+            "in the living room","at the clinic","at the market","in the library","in the yard"],
+    times:["in the morning","in the evening","at noon","yesterday","today","on Saturday",
+           "at night","last week"],
+    joins:["Then","After that","In the end"],
+    q:{what:"What",who:"Who",where:"Where",when:"When"}
+  },
+
+  probeWords:{
+    3:["the","and","you","for","are","but"],
+    4:["time","year","work","life","hand","part"],
+    5:["about","other","which","their","would","there"],
+    6:["people","before","should","around","little","number"],
+    7:["because","between","through","another","against","without"],
+    8:["business","children","computer","consider","continue","distance"]
+  },
+  probePassage:{
+    title:"Measurement passage",
+    body:["Every week we walk to the large market near the station. There are stalls of fruit and vegetables, and a small shop that sells cheese.",
+          "We buy fresh bread, a few tomatoes and cucumbers, and sometimes flowers for the table. On the way back we stop for coffee."],
+    words:47
+  }
+}
+EN.probeWords[3]=["the","and","you","for","are","but"];
+
+const CONTENT = {he:HE, en:EN};
+</script>
+<script>
+/* ============================================================
+   STATE
+   Separate progress model per language. Nothing is shared except
+   the reading-appearance settings, which are about the person's
+   eyes, not their orthography.
+   ============================================================ */
+const KEY = "lexia_state_v1";
+const TRIAL_KEY = "lexia_trials_v1";
+let mem = null;
+
+const STORE = {
+  mode: "memory",
+  _ls(){ try{ const k="__lexia_t"; window.localStorage.setItem(k,"1");
+               window.localStorage.removeItem(k); return window.localStorage; }catch(e){ return null; } },
+  detect(){
+    this.mode = this._ls() ? "local" : (typeof window!=="undefined" && window.storage ? "artifact" : "memory");
+    return this.mode;
+  },
+  async get(key){
+    const ls=this._ls();
+    if(ls){ const v=ls.getItem(key); if(v!==null) return v; }
+    if(typeof window!=="undefined" && window.storage){
+      try{ const r=await window.storage.get(key); if(r && r.value) return r.value; }catch(e){}
+    }
+    return mem && mem[key] || null;
+  },
+  async set(key, value){
+    let stored=false;
+    const ls=this._ls();
+    if(ls){ try{ ls.setItem(key, value); stored=true; }
+            catch(e){ this.quotaHit=true; } }
+    if(typeof window!=="undefined" && window.storage){
+      try{ await window.storage.set(key, value); stored=true; }catch(e){}
+    }
+    if(!stored){ mem = mem||{}; mem[key]=value; }
+    return stored;
+  }
+};
+
+function freshLang(){
+  return {
+    stage:1, xp:0, level:1, streak:0, longest:0, lastDay:null, weekDays:[],
+    exposure:{letter:900, word:1300},
+    run:{letter:0, word:0},          // consecutive-correct run for the staircase
+    letterStats:{},                  // ch -> {n, k, rt, best}
+    wordStats:{},                    // word -> {n, k}
+    confusion:{},                    // target -> {response: count}
+    exerciseStats:{},                // exercise code -> {n,k}
+    errorTypes:{},                   // error class -> count
+    errorLog:[],                     // recent classified errors, for trend
+    probes:[],                       // {len, rt, ok, t}
+    slopeHistory:[],                 // {t, slope, intercept, n, r2}
+    wpmHistory:[],                   // {t, wpm, id, read}
+    compHistory:[],                  // {t, pct}
+    sessions:[],                     // {t, sec, n, k, ended, id}
+    committedTrials:0,               // trials from sessions already sealed
+    library:[],                      // user's own texts
+    genPassages:[],                  // generated passages kept for re-reading
+    passageReads:{},                 // passageId -> count
+    totalTrials:0
+  };
+}
+function freshState(){
+  return {
+    v:1, lang:null,
+    look:{ font:"sans", size:30, track:0, leading:1.7, theme:"light", nikud:false },
+    voice:{ on:true, auto:true, rate:0.9, force:false },
+    he:freshLang(), en:freshLang()
+  };
+}
+let S = freshState();
+let TRIALS = [];            // every trial ever run, the raw record
+let TRIALS_DIRTY = false;
+const TRIAL_CAP = 20000;    // ~months of daily practice; oldest trimmed first
+
+function recordTrial(row){
+  TRIALS.push(row);
+  if(TRIALS.length > TRIAL_CAP) TRIALS.splice(0, TRIALS.length - TRIAL_CAP);
+  TRIALS_DIRTY = true;
+}
+
+async function loadState(){
+  STORE.detect();
+  try{
+    const raw = await STORE.get(KEY);
+    if(raw){ const p = JSON.parse(raw); if(p && p.v===1) S = Object.assign(freshState(), p); }
+  }catch(e){ /* first run, or unreadable — start clean rather than crash */ }
+  try{
+    const t = await STORE.get(TRIAL_KEY);
+    if(t) TRIALS = JSON.parse(t) || [];
+  }catch(e){ TRIALS = []; }
+}
+let saveTimer=null, saveFailed=false;
+function saveState(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>flushState(), 250);
+}
+async function flushState(){
+  clearTimeout(saveTimer);
+  const okState = await STORE.set(KEY, JSON.stringify(S));
+  let okTrials = true;
+  if(TRIALS_DIRTY){
+    okTrials = await STORE.set(TRIAL_KEY, JSON.stringify(TRIALS));
+    TRIALS_DIRTY = false;
+  }
+  saveFailed = !(okState && okTrials);
+  return !saveFailed;
+}
+
+/* short-hands */
+const L = () => S[S.lang];
+const T = () => STR[S.lang] || STR.he;   // gate screen has no language yet
+const C = () => CONTENT[S.lang];
+const isHe = () => S.lang==="he";
+
+/* ---------- small utilities ---------- */
+const $ = (sel,root=document)=>root.querySelector(sel);
+const el = (tag, attrs={}, ...kids)=>{
+  const n=document.createElement(tag);
+  for(const k in attrs){
+    if(k==="class") n.className=attrs[k];
+    else if(k==="html") n.innerHTML=attrs[k];
+    else if(k.startsWith("on")) n.addEventListener(k.slice(2).toLowerCase(), attrs[k]);
+    else if(attrs[k]!==null && attrs[k]!==undefined) n.setAttribute(k, attrs[k]);
+  }
+  kids.flat().forEach(c=>{ if(c===null||c===undefined||c===false) return;
+    n.appendChild(typeof c==="string"||typeof c==="number"?document.createTextNode(c):c); });
+  return n;
+};
+const rnd = a => a[Math.floor(Math.random()*a.length)];
+const shuffle = a => { const b=a.slice(); for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; };
+const uniq = a => [...new Set(a)];
+const today = () => new Date().toISOString().slice(0,10);
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const fmtT = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+
+/* ---------- adaptive engine ---------- */
+// Weighted up/down staircase, 3-down-1-up (~79% correct target).
+function stair(kind, ok){
+  const st = L(); const lo = kind==="letter"?70:120, hi = kind==="letter"?3000:4000;
+  if(ok){
+    st.run[kind]++;
+    if(st.run[kind]>=3){ st.run[kind]=0; st.exposure[kind]=clamp(Math.round(st.exposure[kind]*0.86), lo, hi); }
+  } else {
+    st.run[kind]=0;
+    st.exposure[kind]=clamp(Math.round(st.exposure[kind]*1.30), lo, hi);
+  }
+}
+function noteLetter(ch, ok, rt){
+  const st=L().letterStats; const s = st[ch] || (st[ch]={n:0,k:0,rt:0,best:null});
+  s.n++; if(ok){ s.k++; s.rt+=rt; s.best = s.best===null?rt:Math.min(s.best,rt); }
+}
+function noteConfusion(target, response){
+  if(target===response) return;
+  const cm=L().confusion; (cm[target] || (cm[target]={}));
+  cm[target][response] = (cm[target][response]||0)+1;
+}
+function letterMastery(ch){
+  const s=L().letterStats[ch]; if(!s||s.n<3) return 0;
+  const acc=s.k/s.n; const speed = s.best? clamp(1 - (s.best-350)/2000, 0, 1) : 0;
+  return clamp(acc*0.7 + speed*0.3, 0, 1);
+}
+// Pick the letters that need work most: low mastery first, with exploration.
+function weakLetters(n){
+  const all = C().letters.slice();
+  const scored = all.map(ch=>({ch, m:letterMastery(ch), seen:(L().letterStats[ch]||{n:0}).n}));
+  scored.sort((a,b)=> (a.m - b.m) || (a.seen - b.seen));
+  const head = scored.slice(0, Math.max(6, Math.ceil(all.length*0.4))).map(x=>x.ch);
+  const out=[]; for(let i=0;i<n;i++) out.push(Math.random()<0.75? rnd(head) : rnd(all));
+  return out;
+}
+// Distractors come from the person's own confusion history first.
+function distractors(target, count){
+  const cm = L().confusion[target] || {};
+  const learned = Object.keys(cm).sort((a,b)=>cm[b]-cm[a]);
+  const built = C().confuse[target] || [];
+  const pool = uniq([...learned, ...built, ...shuffle(C().letters)]).filter(x=>x!==target && x.length===1);
+  return pool.slice(0,count);
+}
+function wordDistractors(target, count){
+  const len = target.length;
+  const bank = (C().words[len]||[]).filter(w=>w!==target);
+  const score = w => { let same=0; for(let i=0;i<Math.min(w.length,len);i++) if(w[i]===target[i]) same++;
+                       let shared=0; const t=new Set(target); for(const c of w) if(t.has(c)) shared++;
+                       return same*2 + shared; };
+  const near = bank.map(w=>({w,s:score(w)})).sort((a,b)=>b.s-a.s).slice(0,10);
+  const picked = shuffle(near).slice(0,count).map(x=>x.w);
+  while(picked.length<count){ const w=rnd(bank||[]); if(w&&!picked.includes(w)) picked.push(w); else break; }
+  return picked;
+}
+/* ============================================================
+   SENTENCE AND PASSAGE GENERATION
+   Built from a tagged lexicon rather than a large language model: it
+   works offline, the Hebrew agreement is correct by construction, and
+   — the reason that matters most here — the comprehension questions
+   are derived from the slots we filled, so the answer key cannot be
+   wrong. A generated question about a generated sentence is exact.
+   ============================================================ */
+/* "The boy" -> "the boy" mid-sentence, but "Mother" stays "Mother". */
+const midForm = d => /^(The|My) /.test(d) ? d.charAt(0).toLowerCase()+d.slice(1) : d;
+
+function genSentence(lang){
+  const G = CONTENT[lang||S.lang].gen;
+  const he = (lang||S.lang)==="he";
+  const subj = rnd(G.subjects);
+  const verb = rnd(G.verbs);
+  const cat  = verb.c;
+  const obj  = rnd(G.objects[cat]);
+  const place= rnd(G.places);
+  const time = rnd(G.times);
+  const vf   = he ? verb[subj.g] : verb.v;
+
+  const objText = (he && (G.defCats||[]).indexOf(cat)>=0) ? "את "+obj : obj;
+  const shape = Math.random();
+  let text, hasTime = true;
+  if(he){
+    if(shape<0.34)      text = `${time} ${subj.d} ${vf} ${objText} ${place}.`;
+    else if(shape<0.67) text = `${subj.d} ${vf} ${objText} ${place} ${time}.`;
+    else              { text = `${subj.d} ${vf} ${objText} ${place}.`; hasTime=false; }
+  } else {
+    const cap = x => x.charAt(0).toUpperCase()+x.slice(1);
+    if(shape<0.34)      text = `${cap(time)}, ${midForm(subj.d)} ${vf} ${objText} ${place}.`;
+    else if(shape<0.67) text = `${subj.d} ${vf} ${objText} ${place} ${time}.`;
+    else              { text = `${subj.d} ${vf} ${objText} ${place}.`; hasTime=false; }
+    text = cap(text);
+  }
+  return {text, subj, verb, vf, cat, obj, objText, place, time, hasTime, lang: lang||S.lang};
+}
+
+/* Questions are generated from the frame, so the key is exact and the
+   distractors are drawn from the same semantic slot. */
+function genQuestion(sent, opts){
+  opts = opts||{};
+  const lang = sent.lang, he = lang==="he";
+  const G = CONTENT[lang].gen;
+  const low = x => he ? x : midForm(x);
+  let kinds = opts.noWho ? ["what","where"] : ["what","who","where"];
+  if(sent.hasTime !== false) kinds.push("when");   // never ask about an absent slot
+  const pick = rnd(kinds);
+  // always return n distinct distractors: widen the pool if the narrow one is thin
+  const others = (pool, not, n, wider) => {
+    let out = shuffle(pool.filter(x=>x!==not)).slice(0,n);
+    if(out.length<n && wider){
+      const extra = shuffle(wider.filter(x=>x!==not && out.indexOf(x)<0));
+      out = out.concat(extra.slice(0, n-out.length));
+    }
+    return out;
+  };
+
+  if(pick==="what"){
+    return { q: he ? `${G.q.what} ${sent.subj.d} ${sent.vf}?`
+                   : `What did ${low(sent.subj.d)} ${sent.verb.b}?`,
+             answer: sent.obj,
+             wrong: others(G.objects[sent.cat], sent.obj, 3,
+                           Object.values(G.objects).flat()) };
+  }
+  if(pick==="who"){
+    // keep distractor subjects in the same agreement class so the verb
+    // form in the question cannot give the answer away
+    const pool = he ? G.subjects.filter(x=>x.g===sent.subj.g) : G.subjects;
+    const ot = sent.objText || sent.obj;
+    return { q: he ? `${G.q.who} ${sent.vf} ${ot}?`
+                   : `Who ${sent.verb.v} ${ot}?`,
+             answer: sent.subj.d,
+             wrong: others(pool.map(x=>x.d), sent.subj.d, 3, G.subjects.map(x=>x.d)) };
+  }
+  if(pick==="where"){
+    const ot2 = sent.objText || sent.obj;
+    return { q: he ? `${G.q.where} ${sent.subj.d} ${sent.vf} ${ot2}?`
+                   : `Where did ${low(sent.subj.d)} ${sent.verb.b} ${ot2}?`,
+             answer: sent.place,
+             wrong: others(G.places, sent.place, 3, G.places) };
+  }
+  const ot3 = sent.objText || sent.obj;
+  return { q: he ? `${G.q.when} ${sent.subj.d} ${sent.vf} ${ot3}?`
+                 : `When did ${low(sent.subj.d)} ${sent.verb.b} ${ot3}?`,
+           answer: sent.time,
+           wrong: others(G.times, sent.time, 3, G.times) };
+}
+
+/* Three sentences about one subject, pronouns after the first mention. */
+function genPassage(lang){
+  lang = lang || S.lang;
+  const he = lang==="he";
+  const G = CONTENT[lang].gen;
+  const subj = rnd(G.subjects);
+  const openTime = rnd(G.times);
+  const joinPool = G.joins;   // forward order, not shuffled
+  const used=[]; const sents=[];
+  for(let i=0;i<4;i++){
+    let v; let guard=0;
+    do{ v = rnd(G.verbs); guard++; } while(used.includes(v.c) && guard<12);
+    used.push(v.c);
+    const obj=rnd(G.objects[v.c]), place=rnd(G.places), time=rnd(G.times);
+    const vf = he ? v[subj.g] : v.v;
+    const ot = (he && (G.defCats||[]).indexOf(v.c)>=0) ? "את "+obj : obj;
+    const who = i===0 ? subj.d : subj.p;
+    const join = joinPool[(i-1) % joinPool.length];
+    let line;
+    if(he) line = i===0 ? `${openTime} ${who} ${vf} ${ot} ${place}.`
+                        : `${join} ${who} ${vf} ${ot} ${place}.`;
+    else   line = i===0 ? `${openTime.charAt(0).toUpperCase()+openTime.slice(1)}, ${midForm(who)} ${vf} ${ot} ${place}.`
+                        : `${join} ${who} ${vf} ${ot} ${place}.`;
+    if(!he) line = line.charAt(0).toUpperCase()+line.slice(1);
+    sents.push({line, pronoun:i>0,
+      frame:{text:line, subj:{d:who, g:subj.g, p:subj.p}, verb:v, vf, cat:v.c,
+             obj, objText:ot, place, time:openTime, hasTime:(i===0), lang}});
+  }
+  const title = he ? `${subj.d} — יום אחד` : `${subj.d} — one day`;
+  return {
+    id: "gen-"+Math.random().toString(36).slice(2,9),
+    title,
+    body: [sents.slice(0,2).map(x=>x.line).join(" "), sents.slice(2).map(x=>x.line).join(" ")],
+    q: sents.slice(0,3).map(x=>{ const g=genQuestion(x.frame, {noWho:x.pronoun});
+        const choices=shuffle([g.answer, ...g.wrong]);
+        return {q:g.q, a:choices, c:choices.indexOf(g.answer)}; }),
+    generated:true
+  };
+}
+
+function displayWord(w){
+  if(isHe() && S.look.nikud && HE.nikud[w]) return HE.nikud[w];
+  return w;
+}
+/* Every reading-rate record goes through here. Bounds are clinical, not
+   arbitrary: nobody reads a passage aloud in under 1.5s, and oral reading
+   above ~350 wpm is a mis-tap rather than a measurement. Returns null so the
+   caller can tell the person what happened instead of dropping it silently. */
+function recordWpm(words, sec, id, read){
+  if(!(sec>1.5) || !(words>0)) return null;
+  const wpm = words/(sec/60);
+  if(!isFinite(wpm) || wpm<3 || wpm>350) return null;
+  L().wpmHistory.push({t:Date.now(), wpm, id, read});
+  return wpm;
+}
+/* ============================================================
+   ERROR CLASSIFICATION
+   Counting errors tells you someone is struggling. Classifying them
+   tells you what to do about it. Reading ד as ר is a visual
+   discrimination failure; reading מכונית as מכוניות is a morphological
+   ending failure; getting the first three letters right and inventing
+   the rest is serial decoding running out of capacity. Three different
+   problems, three different drills.
+   ============================================================ */
+const NIKUD = /[\u0591-\u05C7]/g;
+const bare = w => String(w==null?"":w).replace(NIKUD,"").trim();
+const FINAL_OF = {"כ":"ך","מ":"ם","נ":"ן","פ":"ף","צ":"ץ"};
+const BASE_OF  = {"ך":"כ","ם":"מ","ן":"נ","ף":"פ","ץ":"צ"};
+const baseLetter = ch => BASE_OF[ch] || ch;
+
+function sharedPrefix(a,b){ let i=0; while(i<a.length && i<b.length && a[i]===b[i]) i++; return i; }
+function sharedSuffix(a,b){ let i=0; while(i<a.length && i<b.length && a[a.length-1-i]===b[b.length-1-i]) i++; return i; }
+function sameMultiset(a,b){
+  return a.length===b.length && [...a].sort().join("")===[...b].sort().join("");
+}
+function substitutions(a,b){
+  if(a.length!==b.length) return null;
+  const out=[]; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) out.push([a[i],b[i],i]);
+  return out;
+}
+/* longest common subsequence length — a rough consonantal skeleton test */
+function lcsLen(a,b){
+  const m=a.length,n=b.length; let prev=new Array(n+1).fill(0),cur=new Array(n+1).fill(0);
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++) cur[j] = a[i-1]===b[j-1] ? prev[j-1]+1 : Math.max(prev[j],cur[j-1]);
+    [prev,cur]=[cur,prev]; cur.fill(0);
+  }
+  return prev[n];
+}
+const EN_SUFFIX = ["s","es","ed","ing","er","est","ly","ness","ment"];
+function morphRelated(a,b,lang){
+  if(lang==="he"){
+    // same root family in the curated list?
+    for(const f of HE.roots){
+      const all=[...f.in];
+      if(all.includes(a) && all.includes(b)) return true;
+    }
+    // or a shared 3+ letter skeleton in order, with different affixes
+    const sk = lcsLen(a,b);
+    return sk>=3 && sk >= Math.min(a.length,b.length)-2 && a.length!==b.length;
+  }
+  const [sh,lo] = a.length<=b.length ? [a,b] : [b,a];
+  if(lo.startsWith(sh) && EN_SUFFIX.includes(lo.slice(sh.length))) return true;
+  const stem = sharedPrefix(a,b);
+  return stem>=4 && stem>=Math.min(a.length,b.length)-3;
+}
+
+/* Returns {type, pair?} or null when the response was correct. */
+function classifyError(target, response, lang){
+  lang = lang || S.lang;
+  if(response===null || response===undefined || response==="") return {type:"unsure"};
+  const a = bare(target), b = bare(response);
+  if(!a || !b || a===b) return null;
+
+  const A=[...a], B=[...b];
+  if(A.length===1 && B.length===1){
+    if(baseLetter(a)===baseLetter(b)) return {type:"final_form", pair:[a,b]};
+    if(lang==="en" && a.toLowerCase()===b.toLowerCase()) return {type:"letter_case", pair:[a,b]};
+    const conf = (CONTENT[lang].confuse[a]||[]);
+    if(conf.includes(b)) return {type:"similar_letter", pair:[a,b]};
+    return {type:"unrelated", pair:[a,b]};
+  }
+
+  const subs = substitutions(a,b);
+  if(subs && subs.length===1){
+    const [x,y] = subs[0];
+    if(baseLetter(x)===baseLetter(y)) return {type:"final_form", pair:[x,y]};
+    return {type:"similar_letter", pair:[x,y]};
+  }
+  if(sameMultiset(a,b)) return {type:"letter_order"};
+
+  // one word is the other with material added or removed at one end
+  const headExtra = a.endsWith(b) ? a.slice(0,a.length-b.length)
+                  : b.endsWith(a) ? b.slice(0,b.length-a.length) : null;
+  const tailExtra = a.startsWith(b) ? a.slice(b.length)
+                  : b.startsWith(a) ? b.slice(a.length) : null;
+  const AFFIX = lang==="he" ? ["ים","ות","יים","ה","ת","י","ן","נו","כם","הם","יה","יו"]
+                            : EN_SUFFIX;
+  if(headExtra && [...headExtra].length<=2) return {type:"word_onset", kept:b.length};
+  if(tailExtra && AFFIX.indexOf(tailExtra)>=0) return {type:"morphology"};
+  if(tailExtra) return {type:"truncation", kept:Math.min(a.length,b.length)};
+  if(morphRelated(a,b,lang)) return {type:"morphology"};
+
+  const pre=sharedPrefix(a,b), suf=sharedSuffix(a,b);
+  const minLen=Math.min(A.length,B.length);
+  const half=Math.max(2,Math.ceil(minLen*0.5));
+  // strings are stored in logical order, so index 0 is the first letter READ
+  // in Hebrew and English alike
+  if(pre>=half && pre>suf) return {type:"truncation", kept:pre};
+  if(suf>=half && suf>pre) return {type:"word_onset", kept:suf};
+  if(Math.abs(A.length-B.length)>=2) return {type:"length"};
+  return {type:"unrelated"};
+}
+
+function noteError(target, response, lang){
+  const cls = classifyError(target, response, lang);
+  if(!cls) return null;
+  const st=L();
+  st.errorTypes[cls.type] = (st.errorTypes[cls.type]||0)+1;
+  st.errorLog.push({t:Date.now(), type:cls.type, target:bare(target), resp:bare(response)});
+  if(st.errorLog.length>400) st.errorLog.splice(0, st.errorLog.length-400);
+  // a substitution inside a word is still letter-level evidence
+  if(cls.pair) noteConfusion(cls.pair[0], cls.pair[1]);
+  return cls;
+}
+function errorProfile(windowN){
+  const st=L();
+  const log = windowN ? st.errorLog.slice(-windowN) : st.errorLog;
+  const counts={}; log.forEach(e=>counts[e.type]=(counts[e.type]||0)+1);
+  const total=log.length;
+  return Object.entries(counts).sort((x,y)=>y[1]-x[1])
+    .map(([type,n])=>({type, n, pct: total? n/total : 0}));
+}
+function dominantError(minN){
+  const p=errorProfile(80);
+  if(!p.length) return null;
+  const top=p[0];
+  const informative = top.type!=="unsure";
+  return (top.n>=(minN||5) && top.pct>=0.25 && informative) ? top : null;
+}
+
+// Least-squares fit of reaction time on word length -> ms per letter.
+function fitSlope(rows){
+  const pts = rows.filter(r=>r.ok);
+  if(pts.length<6) return null;
+  const n=pts.length;
+  const mx=pts.reduce((s,p)=>s+p.len,0)/n, my=pts.reduce((s,p)=>s+p.rt,0)/n;
+  let num=0, den=0; for(const p of pts){ num+=(p.len-mx)*(p.rt-my); den+=(p.len-mx)**2; }
+  if(den===0) return null;
+  const b=num/den, a=my-b*mx;
+  let ss=0, st=0; for(const p of pts){ const f=a+b*p.len; ss+=(p.rt-f)**2; st+=(p.rt-my)**2; }
+  return {slope:Math.round(b), intercept:Math.round(a), n, r2: st? 1-ss/st : 0};
+}
+/* XP rewards showing up, not being right. Capped so that grinding
+   past the prescribed dose earns nothing extra. */
+function addXP(n){
+  const st=L(); const d=today();
+  if(st.xpDay!==d){ st.xpDay=d; st.dayXP=0; }
+  st.dayXP=(st.dayXP||0)+n;
+  const allowed = Math.max(0, 260 - (st.dayXP - n));
+  st.xp += Math.min(n, allowed);
+  st.level = 1+Math.floor(st.xp/400);
+}
+function markDay(){
+  const st=L(); const d=today();
+  if(st.lastDay===d) return;
+  const y=new Date(Date.now()-864e5).toISOString().slice(0,10);
+  st.streak = (st.lastDay===y)? st.streak+1 : 1;
+  st.longest=Math.max(st.longest, st.streak);
+  st.lastDay=d;
+  st.weekDays=uniq([...(st.weekDays||[]), d]).slice(-7);
+}
+
+/* ---------- appearance ---------- */
+const FONTS = {
+  sans:'system-ui,-apple-system,"Segoe UI",Roboto,Arial,"Arial Hebrew",sans-serif',
+  serif:'"Frank Ruehl CLM","David","Times New Roman",Georgia,serif',
+  round:'"Varela Round","Trebuchet MS",Verdana,"Arial Rounded MT Bold",sans-serif',
+  mono:'"SF Mono",Menlo,Consolas,"Courier New",monospace'
+};
+function applyLook(){
+  const r=document.documentElement.style, k=S.look;
+  r.setProperty("--read-font", FONTS[k.font]||FONTS.sans);
+  r.setProperty("--read-size", k.size+"px");
+  r.setProperty("--read-track", k.track+"em");
+  r.setProperty("--read-leading", k.leading);
+  document.documentElement.setAttribute("data-theme", k.theme);
+}
+function applyLang(){
+  const t = S.lang? T() : STR.he;
+  document.documentElement.lang = S.lang||"he";
+  document.documentElement.dir = t.dir;
+  document.title = t.app;
+}
+
+const APP_VERSION = "1.0.0";
+const BUILD = "2026-08-02";
+
+/* Registration is skipped on file:// where it is unsupported, and any failure
+   is swallowed: an app that refuses to start because caching failed would be
+   worse than one that simply needs a connection. */
+let UPDATE_READY = false;
+function initServiceWorker(){
+  try{
+    if(!("serviceWorker" in navigator)) return;
+    if(location.protocol !== "https:" && location.hostname !== "localhost") return;
+    navigator.serviceWorker.register("sw.js").then(reg=>{
+      reg.addEventListener("updatefound", ()=>{
+        const nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener("statechange", ()=>{
+          if(nw.state==="installed" && navigator.serviceWorker.controller){
+            UPDATE_READY = true;   // surfaced in Settings, never mid-exercise
+          }
+        });
+      });
+    }).catch(()=>{});
+  }catch(e){}
+}
+
+/* ============================================================
+   SPEECH
+   Reads instructions, prompts, feedback and summaries.
+   It must never read a stimulus the person is being tested on:
+   hearing the answer would turn every recognition exercise into
+   a listening exercise. Every call site below is an instruction,
+   never a target.
+   ============================================================ */
+const TTS = {
+  _voices:[], primed:false, tried:false, blocked:false,
+  lastError:null, lastStart:null, onstatus:null,
+
+  supported(){
+    try{
+      return typeof window!=="undefined" && "speechSynthesis" in window
+        && window.speechSynthesis && typeof window.speechSynthesis.speak==="function"
+        && typeof window.SpeechSynthesisUtterance==="function";
+    }catch(e){ return false; }
+  },
+  framed(){ try{ return window.self !== window.top; }catch(e){ return true; } },
+  platform(ua){
+    ua = ua || ((navigator.userAgent||"") + " " + (navigator.platform||""));
+    if(/iPhone|iPad|iPod/i.test(ua)) return "ios";
+    if(/Android/i.test(ua)) return "android";
+    if(/Mac OS X|Macintosh/i.test(ua)) return "mac";
+    if(/Windows/i.test(ua)) return "win";
+    return "other";
+  },
+
+  /* Read the list live every time. Engines populate it asynchronously and
+     some never fire voiceschanged at all, so a cached snapshot taken at boot
+     is routinely empty and stays empty. */
+  list(){
+    if(!this.supported()) return [];
+    try{
+      const v = window.speechSynthesis.getVoices();
+      if(v && v.length) this._voices = v;
+    }catch(e){}
+    return this._voices || [];
+  },
+  init(){
+    if(!this.supported()) return;
+    const load=()=>{ this.list(); this.ping(); };
+    load();
+    try{ window.speechSynthesis.onvoiceschanged = load; }catch(e){}
+    [120,400,1000,2500,5000].forEach(ms=>setTimeout(load, ms));
+  },
+  ping(){ if(typeof this.onstatus==="function") { try{ this.onstatus(); }catch(e){} } },
+
+  tag(lang){ return lang==="he" ? "he-IL" : "en-GB"; },
+  voiceFor(lang){
+    const vs = this.list();
+    const norm = v => String(v.lang||"").toLowerCase().replace(/_/g,"-");
+    // "iw" is the legacy ISO code for Hebrew; Android and several Chrome
+    // builds still report it, so both must be accepted.
+    const want = lang==="he" ? ["he","iw"] : ["en"];
+    for(const wcode of want){
+      const hit = vs.find(v=>norm(v).startsWith(wcode+"-")) || vs.find(v=>norm(v)===wcode);
+      if(hit) return hit;
+    }
+    // last resort: some engines mislabel lang but name the language honestly
+    if(lang==="he"){
+      const byName = vs.find(v=>/hebrew|עברית|carmit|asaf/i.test(String(v.name||"")));
+      if(byName) return byName;
+    }
+    return null;
+  },
+  /* An English voice reading Hebrew produces gibberish, not an accent, so we
+     refuse rather than emit it. Latin script survives any voice, so English
+     needs no such guard. The user can override in case detection is wrong. */
+  canSpeak(lang){
+    if(lang!=="he") return true;
+    if(S.voice && S.voice.force) return true;
+    if(this.list().length===0) return true;  // no list at all: let the watchdog judge
+    return !!this.voiceFor("he");
+  },
+  hasVoice(lang){ return !!this.voiceFor(lang); },
+  speaking(){ try{ return !!(window.speechSynthesis.speaking || window.speechSynthesis.pending); }catch(e){ return false; } },
+  stop(){
+    try{ window.speechSynthesis.cancel(); }catch(e){}
+    this.pendingTimer && clearTimeout(this.pendingTimer);
+  },
+
+  speak(text, opts){
+    opts = opts||{};
+    text = String(text||"").trim();
+    if(!this.supported() || !text){ opts.onend && opts.onend(); return false; }
+    const lang = opts.lang || S.lang || "he";
+    if(!this.canSpeak(lang)){
+      this.noVoice = lang; this.ping();
+      opts.onend && opts.onend(); return false;
+    }
+    this.noVoice = null;
+    const ss = window.speechSynthesis;
+    this.tried = true; this.lastError = null; this.lastStart = null;
+
+    let busy=false;
+    try{ busy = !!(ss.speaking || ss.pending); }catch(e){}
+    try{ if(busy) ss.cancel(); }catch(e){}
+    // Chrome can leave the queue in a paused state after a cancel; an
+    // unconditional resume is harmless and unsticks it.
+    try{ ss.resume(); }catch(e){}
+
+    const fire = ()=>{
+      let u;
+      try{ u = new window.SpeechSynthesisUtterance(text); }
+      catch(e){ this.lastError="utterance-failed"; this.ping(); opts.onend&&opts.onend(); return; }
+      const v = this.voiceFor(lang);
+      // use the voice's own tag: an engine that calls Hebrew "iw-IL" may not
+      // recognise "he-IL" and will silently fall back to its default voice
+      if(v){ u.voice = v; u.lang = v.lang || this.tag(lang); }
+      else  { u.lang = this.tag(lang); }
+      u.rate  = clamp((S.voice && S.voice.rate) || 0.9, 0.5, 1.5);
+      u.pitch = 1; u.volume = 1;
+
+      let started=false, finished=false;
+      u.onstart = ()=>{ started=true; this.primed=true; this.blocked=false;
+                        this.lastStart=Date.now(); this.ping(); };
+      u.onend   = ()=>{ if(finished) return; finished=true; this.ping(); opts.onend&&opts.onend(); };
+      u.onerror = (e)=>{ if(finished) return; finished=true;
+                         this.lastError=(e && (e.error||e.name)) || "error";
+                         this.ping(); opts.onend&&opts.onend(); };
+      try{ ss.speak(u); }
+      catch(e){ this.lastError="speak-threw"; this.ping(); opts.onend&&opts.onend(); return; }
+
+      // If nothing has begun after a second the engine has swallowed it —
+      // typical of a sandboxed frame or a missing voice for the tag.
+      this.watchdog && clearTimeout(this.watchdog);
+      this.watchdog = setTimeout(()=>{
+        if(!started && !finished){
+          this.blocked = true;
+          if(!this.lastError) this.lastError = "no-audio";
+          this.ping(); opts.onend && opts.onend();
+        }
+      }, 1100);
+    };
+
+    // Firing speak() in the same tick as cancel() is a long-standing Chrome
+    // bug: the utterance is dropped silently. Give the queue a tick to clear.
+    this.pendingTimer && clearTimeout(this.pendingTimer);
+    if(busy) this.pendingTimer = setTimeout(fire, 90); else fire();
+    return true;
+  },
+
+  /* Everything the settings screen needs to explain a failure. */
+  diagnose(){
+    const vs = this.list();
+    return {
+      supported: this.supported(),
+      framed: this.framed(),
+      voiceCount: vs.length,
+      he: this.voiceFor("he"), en: this.voiceFor("en"),
+      tried: this.tried, blocked: this.blocked, noVoice: this.noVoice,
+      error: this.lastError, everSpoke: !!this.lastStart,
+      all: vs.map(v=>({name:v.name, lang:v.lang}))
+    };
+  }
+};
+
+/* A listen control. Tap to hear, tap again to stop. */
+function listenBtn(text, opts){
+  opts = opts||{};
+  const t = STR[opts.lang] || T();
+  if(!TTS.supported() || !(S.voice && S.voice.on)) return null;
+  const b = el("button",{class:"listen","aria-label":t.listen, onClick:()=>{
+    if(b.classList.contains("on")){ TTS.stop(); b.classList.remove("on"); return; }
+    b.classList.add("on");
+    TTS.speak(text,{lang:opts.lang, onend:()=>{
+      b.classList.remove("on");
+      if(TTS.blocked){
+        b.classList.add("silent");
+        b.textContent=""; b.appendChild(el("span",{class:"spk"},"🔇"));
+        b.appendChild(document.createTextNode(t.voice_silent));
+      }
+    }});
+  }}, el("span",{class:"spk"},"🔊"), opts.compact?null:t.listen);
+  return b;
+}
+function listenRow(text, opts){
+  const b = listenBtn(text, opts);
+  return b ? el("div",{class:"listenrow"}, b) : null;
+}
+/* Auto-read, only when the person has asked for it. */
+function announceOnce(key, text, opts){
+  if(!SESS) return announce(text, opts);
+  SESS.said = SESS.said || {};
+  if(SESS.said[key]) return;
+  SESS.said[key]=true;
+  announce(text, opts);
+}
+function announce(text, opts){
+  if(!(S.voice && S.voice.on && S.voice.auto)) return;
+  if(!text) return;
+  TTS.speak(text, opts);
+}
+function letterName(ch){
+  if(!isHe()) return ch;
+  const i = HE.letters.indexOf(ch);
+  return i>=0 ? STR.he.lb_letters[i] : ch;
+}
+
+/* ============================================================
+   EXPORT
+   Trial-level CSV is the whole point of running a session: without it
+   a slope figure cannot be re-checked by anyone afterwards.
+   ============================================================ */
+const CSV_COLS = ["ts","iso","session","lang","seq","minute","kind","item","len","resp",
+                  "ok","rt","exposure","err","nikud","font","size","track","theme","stage"];
+function csvCell(v){
+  const t = v===null||v===undefined ? "" : String(v);
+  return /[",\n;]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t;
+}
+function trialsCSV(){
+  const head = CSV_COLS.join(",");
+  const rows = TRIALS.map(r=>{
+    const o = Object.assign({}, r, {iso:new Date(r.ts).toISOString()});
+    return CSV_COLS.map(c=>csvCell(o[c])).join(",");
+  });
+  // BOM so Excel opens Hebrew correctly instead of mojibake
+  return "\ufeff" + [head, ...rows].join("\n");
+}
+function summaryCSV(){
+  const rows=[["measure","lang","date","value","detail"]];
+  rows.push(["app_version","", new Date().toISOString(), APP_VERSION, "build "+BUILD]);
+  ["he","en"].forEach(lang=>{
+    const st=S[lang];
+    st.slopeHistory.forEach(x=>rows.push(["slope_ms_per_letter",lang,
+      new Date(x.t).toISOString(), x.slope, "n="+x.n+" r2="+x.r2]));
+    st.wpmHistory.forEach(x=>rows.push(["wpm",lang,new Date(x.t).toISOString(),
+      Math.round(x.wpm), x.id+" read"+x.read]));
+    st.compHistory.forEach(x=>rows.push(["comprehension",lang,new Date(x.t).toISOString(), x.pct, ""]));
+    st.sessions.forEach(x=>rows.push(["session",lang,new Date(x.t).toISOString(),
+      x.sec+"s", x.n+" items, "+x.k+" correct, ended:"+x.ended]));
+    Object.entries(st.errorTypes||{}).forEach(([k,v])=>rows.push(["error_type",lang,"",v,k]));
+    Object.entries(st.exerciseStats||{}).forEach(([k,v])=>
+      rows.push(["exercise",lang,"",v.n,k+" "+Math.round(100*v.k/Math.max(1,v.n))+"%"]));
+    for(const a in st.confusion) for(const b in st.confusion[a])
+      rows.push(["confusion",lang,"",st.confusion[a][b],a+"->"+b]);
+  });
+  return "\ufeff"+rows.map(r=>r.map(csvCell).join(",")).join("\n");
+}
+function backupJSON(){
+  return JSON.stringify({v:1, app:APP_VERSION, build:BUILD,
+    exported:new Date().toISOString(), state:S, trials:TRIALS}, null, 1);
+}
+function stamp(){ return new Date().toISOString().slice(0,16).replace(/[:T]/g,"-"); }
+
+/* Download, with a clipboard fallback: sandboxed frames block downloads, and
+   losing a session's data to a blocked click would be the worst outcome. */
+async function saveFile(text, filename, mime){
+  try{
+    const blob = new Blob([text], {type:(mime||"text/csv")+";charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url; a.download=filename; a.style.display="none";
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 4000);
+    return "download";
+  }catch(e){
+    try{ await navigator.clipboard.writeText(text); return "clipboard"; }
+    catch(e2){ return "failed"; }
+  }
+}
+
+/* ============================================================
+   ROUTER + SHELL
+   ============================================================ */
+let route = "today";
+let overlay = null;   // when set, takes over the whole screen (session, assessment, reader)
+
+function render(){
+  applyLang(); applyLook();
+  const app = $("#app"); app.innerHTML="";
+  if(!S.lang){ app.appendChild(gateScreen()); return; }
+  if(overlay){ app.appendChild(overlay()); return; }
+  app.appendChild(topbar());
+  const scr = el("main",{class:"screen"});
+  ({today:screenToday, program:screenProgram, progress:screenProgress, settings:screenSettings}[route])(scr);
+  app.appendChild(scr);
+  app.appendChild(tabbar());
+  window.scrollTo(0,0);
+}
+function go(r){ route=r; overlay=null; render(); }
+function open(fn){ overlay=fn; render(); }
+function close(){ overlay=null; render(); }
+
+function topbar(){
+  const t=T();
+  return el("header",{class:"topbar"},
+    el("h1",{},t.app),
+    el("div",{class:"spacer"}),
+    el("button",{class:"iconbtn","aria-label":t.appearance, onClick:openLook},"Aa")
+  );
+}
+function tabbar(){
+  const t=T();
+  const mk=(id,g,label)=>el("button",{ "aria-current": route===id?"page":null, onClick:()=>go(id)},
+    el("span",{class:"g"},g), el("span",{},label));
+  return el("nav",{class:"tabbar"},
+    mk("today","●",t.tab_today), mk("program","▤",t.tab_program),
+    mk("progress","▚",t.tab_progress), mk("settings","⚙",t.tab_settings));
+}
+
+/* ---------- language gate ---------- */
+function gateScreen(){
+  const wrap = el("div",{class:"gate", dir:"rtl"});
+  wrap.appendChild(el("div",{class:"mark"},"L E X I A"));
+  wrap.appendChild(el("h2",{style:"font-size:26px;margin-bottom:6px"},"באיזו שפה נתאמן?"));
+  wrap.appendChild(el("p",{class:"muted",style:"margin-bottom:22px"},
+    "האפליקציה כולה תעבור לשפה שתבחרו. אפשר להחליף בכל רגע, וההתקדמות בכל שפה נשמרת בנפרד."));
+  const heRow=el("div",{style:"display:flex;gap:10px;align-items:stretch;margin-bottom:12px"});
+  heRow.appendChild(el("button",{class:"gatebtn primary",style:"margin:0;flex:1", onClick:()=>pickLang("he")},
+    el("b",{},"עברית"), el("span",{},"אותיות, שורשים, אותיות סופיות, ניקוד")));
+  const heSpk=listenBtn(STR.he.gate_he_speak,{lang:"he",compact:true});
+  if(heSpk){ heSpk.style.minWidth="58px"; heRow.appendChild(heSpk); }
+  wrap.appendChild(heRow);
+
+  const enRow=el("div",{style:"display:flex;gap:10px;align-items:stretch;margin-bottom:12px"});
+  enRow.appendChild(el("button",{class:"gatebtn",style:"margin:0;flex:1", dir:"ltr", onClick:()=>pickLang("en")},
+    el("b",{},"English"), el("span",{},"Letters, sight words, upper and lower case")));
+  const enSpk=listenBtn(STR.en.gate_en_speak,{lang:"en",compact:true});
+  if(enSpk){ enSpk.style.minWidth="58px"; enRow.appendChild(enSpk); }
+  wrap.appendChild(enRow);
+  wrap.appendChild(el("p",{class:"muted",style:"margin-top:22px;font-size:13px"},
+    "כלי תרגול. לא אבחון ולא תחליף לטיפול."));
+  return wrap;
+}
+function pickLang(l){ S.lang=l; saveState(); go("today"); }
+
+/* ============================================================
+   SCREEN — TODAY
+   ============================================================ */
+function screenToday(root){
+  const t=T(), st=L();
+  const plan = planSession();
+  const needsAssess = st.slopeHistory.length===0 ||
+        (Date.now() - st.slopeHistory[st.slopeHistory.length-1].t) > 21*864e5;
+
+  root.appendChild(el("p",{class:"eyebrow"},`${t.greet} · ${t.level} ${st.level}`));
+
+  if(S.pending && S.pending.lang===S.lang && (Date.now()-S.pending.at) < 6*3600e3){
+    const rc=el("section",{class:"card"});
+    rc.appendChild(el("p",{class:"eyebrow"},t.resume_title));
+    rc.appendChild(el("p",{},t.resume_body));
+    const rr=el("div",{class:"btnrow"});
+    rr.appendChild(el("button",{class:"btn", onClick:()=>resumeSession()}, t.resume_yes));
+    rr.appendChild(el("button",{class:"btn ghost", onClick:()=>{ clearParked(); render(); }}, t.resume_no));
+    rc.appendChild(rr);
+    root.appendChild(rc);
+  }
+
+  if(needsAssess){
+    const c=el("section",{class:"card"});
+    c.appendChild(el("p",{class:"eyebrow"},t.assessment_due));
+    c.appendChild(el("h2",{},t.run_assessment));
+    c.appendChild(el("p",{},t.run_assessment_sub));
+    c.appendChild(el("button",{class:"btn", onClick:()=>open(assessmentScreen)},t.as_begin));
+    root.appendChild(c);
+  }
+
+  const card = el("section",{class:"card"});
+  card.appendChild(el("p",{class:"eyebrow"},t.todays_session));
+  card.appendChild(el("h2",{},`${t.stage_of} ${st.stage} · ${stageName(st.stage)}`));
+  card.appendChild(el("p",{class:"muted"},`~${plan.minutes} ${t.minutes} · ${plan.blocks.length} ${t.exercises}`));
+  const spoken = `${t.todays_session}. ${t.stage_of} ${st.stage}, ${stageName(st.stage)}. ${plan.minutes} ${t.minutes}.`;
+  const lb = listenBtn(spoken); if(lb) card.appendChild(el("div",{class:"listenrow",style:"margin:12px 0 0"}, lb));
+  card.appendChild(el("button",{class:"btn",style:"margin-top:14px",
+    onClick:()=>startSession(plan)}, t.start_session));
+  announce(spoken);
+  const bar=el("div",{class:"sessbar"});
+  plan.blocks.forEach(()=>bar.appendChild(el("i",{})));
+  card.appendChild(bar);
+  root.appendChild(card);
+
+  const chips = el("div",{class:"chips"});
+  chips.appendChild(el("span",{class:"chip"}, el("b",{},String(st.streak))," ",t.streak_days));
+  chips.appendChild(el("span",{class:"chip"}, el("b",{},String((st.weekDays||[]).length)+"/7")," ",t.week_goal));
+  chips.appendChild(el("span",{class:"chip"}, el("b",{},String(st.xp))," ",t.xp));
+  root.appendChild(chips);
+
+  if(S.voice && S.voice.on && isHe() && TTS.supported() && !TTS.blocked
+     && TTS.list().length>0 && !TTS.hasVoice("he") && !S.voice.force){
+    const hv=el("section",{class:"note caution"});
+    hv.appendChild(el("h3",{style:"margin-bottom:6px"}, t.voice_he_missing));
+    hv.appendChild(el("div",{}, t.voice_he_why));
+    hv.appendChild(el("button",{class:"btn sm quiet",style:"margin-top:10px",
+      onClick:()=>go("settings")}, t.voice_install));
+    root.appendChild(hv);
+  }
+  if(S.voice && S.voice.on && TTS.blocked){
+    const vn=el("section",{class:"note caution"});
+    vn.appendChild(el("div",{}, TTS.framed()? t.voice_blocked : t.voice_no_audio));
+    vn.appendChild(el("button",{class:"btn sm quiet",style:"margin-top:10px",
+      onClick:()=>go("settings")}, t.voice_fix));
+    root.appendChild(vn);
+  }
+  const coach = coachLine();
+  if(coach){
+    const cc=el("section",{class:"note"});
+    cc.appendChild(el("div",{},coach));
+    const cb=listenBtn(coach);
+    if(cb) cc.appendChild(el("div",{class:"listenrow",style:"margin:10px 0 0"}, cb));
+    root.appendChild(cc);
+  }
+
+  const quick=el("div",{class:"btnrow"});
+  quick.appendChild(el("button",{class:"btn ghost", onClick:()=>startSession(planSession(3))}, t.quick3));
+  quick.appendChild(el("button",{class:"btn ghost", onClick:()=>open(libraryScreen)}, t.read_something));
+  root.appendChild(quick);
+  root.appendChild(el("button",{class:"btn ghost",style:"margin-top:10px",
+    onClick:()=>go("program")}, t.pick_exercise));
+}
+
+function stageName(n){ return T()["s"+n]; }
+
+/* The coach speaks only from measured numbers, and never promises. */
+function coachLine(){
+  const st=L(), t=T();
+  const cm=st.confusion; let worst=null,wn=0;
+  for(const a in cm) for(const b in cm[a]) if(cm[a][b]>wn){wn=cm[a][b];worst=[a,b];}
+  const dom=dominantError(8);
+  if(dom && Math.random()<0.6){
+    return (t["e_"+dom.type]||dom.type) + ". " + (t["a_"+dom.type]||"");
+  }
+  const sh=st.slopeHistory;
+  if(sh.length>=2){
+    const a=sh[sh.length-2].slope, b=sh[sh.length-1].slope;
+    if(b < a*0.93) return isHe()
+      ? `ההאטה לכל אות ירדה מ־${a} ל־${b} מילישניות. זו התקדמות אמיתית, וקטנה. ${t.honest_1}`
+      : `Your per-letter cost fell from ${a} to ${b} ms. That's real progress, and it is small. ${t.honest_1}`;
+    if(b > a*1.05) return isHe()
+      ? `המדידה האחרונה איטית יותר מהקודמת. יום עייף משנה מדידה. זה לא אומר שנסוגותם.`
+      : `Your last measurement was slower than the one before. A tired day moves this number. It does not mean you have gone backwards.`;
+    return isHe()
+      ? `הקצב יציב בשלוש השבועות האחרונים. רמה יציבה היא לא כישלון, אבל שווה לשנות תרגילים.`
+      : `Your pace has been flat for about three weeks. A plateau is not a failure, but it is worth changing the exercises.`;
+  }
+  if(worst && wn>=3) return isHe()
+    ? `${worst[0]} מתבלבלת לכם עם ${worst[1]} — ${wn} פעמים. נעבוד על ההבדל ביניהן.`
+    : `You are reading ${worst[0]} as ${worst[1]} — ${wn} times so far. We'll work on telling them apart.`;
+  if(st.totalTrials===0) return isHe()
+    ? `נתחיל באותיות. תרגול קצר כל יום עדיף על אימון ארוך פעם בשבוע.`
+    : `We'll start with letters. A short session every day beats one long session a week.`;
+  return null;
+}
+
+/* ============================================================
+   SCREEN — PROGRAM (stage map)
+   ============================================================ */
+let PICK = new Set();
+let PICK_SCALE = 1;
+
+function screenProgram(root){
+  const t=T(), st=L();
+  root.appendChild(el("h2",{},t.tab_program));
+  root.appendChild(el("div",{class:"note"}, t.all_open));
+
+  /* the recommendation stays a recommendation */
+  const rec=el("section",{class:"card"});
+  rec.appendChild(el("p",{class:"eyebrow"},t.recommended));
+  rec.appendChild(el("h3",{}, `${t.stage_of} ${st.stage} · ${stageName(st.stage)}`));
+  rec.appendChild(el("p",{class:"muted"}, t["s"+st.stage+"d"]));
+  rec.appendChild(el("button",{class:"btn", onClick:()=>startSession(planSession())}, t.start_session));
+  root.appendChild(rec);
+
+  root.appendChild(el("p",{class:"eyebrow",style:"margin-top:24px"}, t.pick_exercise));
+
+  for(let i=1;i<=5;i++){
+    const list = catalogue().filter(e=>e.stage===i);
+    if(!list.length) continue;
+    const box=el("section",{class:"card"});
+
+    const head=el("div",{style:"display:flex;align-items:center;gap:12px;margin-bottom:6px"});
+    const num=el("div",{class:"stagenum"+(i===st.stage?"":"")}, String(i));
+    if(i===st.stage) num.style.cssText="flex:0 0 38px;height:38px;border-radius:50%;display:flex;"+
+      "align-items:center;justify-content:center;font-weight:700;border:1.5px solid var(--accent);"+
+      "color:var(--accent);background:var(--accent-2)";
+    head.appendChild(num);
+    const ttl=el("div",{style:"flex:1"});
+    ttl.appendChild(el("h3",{style:"margin:0"}, t["s"+i]));
+    ttl.appendChild(el("p",{class:"muted",style:"margin:2px 0 0;font-size:14px"}, t["s"+i+"d"]));
+    head.appendChild(ttl);
+    box.appendChild(head);
+    box.appendChild(el("button",{class:"btn sm quiet",style:"width:100%;margin:8px 0 14px",
+      onClick:()=>startSession(planSession(12,i))}, t.whole_stage));
+
+    list.forEach(e=>{
+      const stat = st.exerciseStats[e.code];
+      const row=el("div",{style:"display:flex;align-items:center;gap:10px;padding:10px 0;"+
+        "border-top:1px solid var(--rule)"});
+
+      const info=el("div",{style:"flex:1;min-width:0"});
+      const nm=el("div",{style:"display:flex;align-items:center;gap:8px;flex-wrap:wrap"});
+      nm.appendChild(el("span",{style:"font-weight:600"}, exName(e.code)));
+      nm.appendChild(el("span",{class:"grade "+e.grade}, e.grade==="v"? t.grade_v : t.grade_x));
+      info.appendChild(nm);
+      info.appendChild(el("div",{class:"muted",style:"font-size:13px;margin-top:2px"},
+        stat && stat.n
+          ? `${stat.n} ${t.ex_done} · ${Math.round(100*stat.k/Math.max(1,stat.n))}% ${t.ex_acc}`
+          : t.ex_new));
+      row.appendChild(info);
+
+      const on = PICK.has(e.code);
+      const add=el("button",{class:"iconbtn","aria-pressed":String(on),
+        "aria-label":(on? t.in_session : t.add_to)+": "+exName(e.code),
+        style: on? "border-color:var(--accent);color:var(--accent);background:var(--accent-2)" : "",
+        onClick:()=>{ on? PICK.delete(e.code) : PICK.add(e.code); render(); }}, on?"✓":"+");
+      row.appendChild(add);
+      row.appendChild(el("button",{class:"btn sm quiet",style:"width:auto;flex:0 0 auto",
+        onClick:()=>startExercises([e.code], PICK_SCALE)}, t.start_session));
+      box.appendChild(row);
+    });
+    root.appendChild(box);
+  }
+
+  /* build-your-own basket, pinned at the end */
+  const bb=el("section",{class:"card"});
+  bb.appendChild(el("p",{class:"eyebrow"},t.build_title));
+  if(!PICK.size){
+    bb.appendChild(el("p",{class:"muted"},
+      isHe()? "סמנו + ליד תרגילים כדי להרכיב אימון משלכם."
+            : "Tap + next to any exercises to assemble your own session."));
+  } else {
+    const chips=el("div",{class:"chips"});
+    [...PICK].forEach(c=>chips.appendChild(el("span",{class:"chip"}, exName(c))));
+    bb.appendChild(chips);
+    bb.appendChild(el("p",{class:"eyebrow",style:"margin-top:8px"}, t.session_length));
+    bb.appendChild(seg([[t.length_short,0.5],[t.length_normal,1],[t.length_long,1.8]],
+      PICK_SCALE, v=>{ PICK_SCALE=v; render(); }));
+    bb.appendChild(el("div",{style:"height:12px"}));
+    bb.appendChild(el("button",{class:"btn", onClick:()=>startExercises([...PICK], PICK_SCALE)},
+      `${t.start_selected} (${PICK.size} ${t.selected})`));
+    bb.appendChild(el("div",{style:"height:8px"}));
+    bb.appendChild(el("button",{class:"btn ghost", onClick:()=>{ PICK.clear(); render(); }}, t.clear_sel));
+  }
+  root.appendChild(bb);
+}
+
+/* ============================================================
+   SCREEN — PROGRESS
+   ============================================================ */
+function screenProgress(root){
+  const t=T(), st=L();
+  root.appendChild(el("h2",{},t.tab_progress));
+
+  if(st.slopeHistory.length===0 && st.wpmHistory.length===0 && st.totalTrials===0){
+    root.appendChild(el("p",{class:"muted"},t.no_data));
+    root.appendChild(el("button",{class:"btn",onClick:()=>open(assessmentScreen)},t.run_assessment));
+    return;
+  }
+
+  // headline: slope
+  const sh=st.slopeHistory;
+  if(sh.length){
+    const last=sh[sh.length-1], prev=sh.length>1?sh[sh.length-2]:null;
+    const c=el("section",{class:"card"});
+    c.appendChild(el("p",{class:"eyebrow"},t.slope));
+    const m=el("div",{class:"metric"});
+    m.appendChild(el("span",{class:"n"},String(last.slope)));
+    m.appendChild(el("span",{class:"u"},t.slope_u));
+    c.appendChild(m);
+    if(prev){
+      const d=last.slope-prev.slope;
+      c.appendChild(el("p",{class:"muted"},
+        (d<0? "▼ ":"▲ ")+Math.abs(d)+" "+(isHe()?"לעומת המדידה הקודמת":"since your last measurement")));
+    }
+    c.appendChild(spark(sh.map(x=>x.slope), true));
+    c.appendChild(el("p",{class:"muted",style:"margin:8px 0 0"},t.slope_help));
+    const pb=listenBtn(`${t.slope}: ${last.slope} ${t.slope_u}. ${t.slope_help}`);
+    if(pb) c.appendChild(el("div",{class:"listenrow",style:"margin:12px 0 0"}, pb));
+    root.appendChild(c);
+  }
+
+  // WPM + accuracy + comprehension
+  const grid=el("div",{class:"metricgrid",style:"margin-bottom:16px"});
+  const wp=st.wpmHistory;
+  grid.appendChild(mini(t.reading_speed, wp.length? String(Math.round(wp[wp.length-1].wpm)) : "—", t.wpm));
+  const acc = accOverall();
+  grid.appendChild(mini(t.accuracy, acc===null?"—":Math.round(acc*100)+"%", ""));
+  const ch=st.compHistory;
+  grid.appendChild(mini(t.comprehension, ch.length? Math.round(ch[ch.length-1].pct*100)+"%":"—",""));
+  const mastered = C().letters.filter(x=>letterMastery(x)>=0.8).length;
+  grid.appendChild(mini(t.letters_mastered, mastered+"/"+C().letters.length, ""));
+  root.appendChild(grid);
+
+  if(wp.length>1){
+    const c=el("section",{class:"card"});
+    c.appendChild(el("p",{class:"eyebrow"},t.reading_speed));
+    c.appendChild(spark(wp.map(x=>x.wpm), false));
+    root.appendChild(c);
+  }
+
+  // letter mastery
+  const lm=el("section",{class:"card"});
+  lm.appendChild(el("p",{class:"eyebrow"},t.letter_mastery));
+  const g=el("div",{class:"masterygrid"});
+  C().letters.forEach(chx=>{
+    const m=letterMastery(chx);
+    const cell=el("div",{class:"cell", title:chx});
+    cell.appendChild(el("b",{},chx));
+    const bar=el("i",{}); bar.appendChild(el("span",{style:`width:${Math.round(m*100)}%`}));
+    cell.appendChild(bar); g.appendChild(cell);
+  });
+  lm.appendChild(g);
+  root.appendChild(lm);
+
+  // error patterns
+  const prof=errorProfile(120);
+  const ec=el("section",{class:"card"});
+  ec.appendChild(el("p",{class:"eyebrow"},t.err_title));
+  if(!prof.length){
+    ec.appendChild(el("p",{class:"muted"},t.err_none));
+  } else {
+    const dom=dominantError();
+    if(dom){
+      ec.appendChild(el("h3",{style:"margin-bottom:4px"}, t["e_"+dom.type]||dom.type));
+      ec.appendChild(el("p",{style:"margin-bottom:14px"}, t["a_"+dom.type]||""));
+    }
+    prof.forEach(p=>{
+      const row=el("div",{class:"pair"});
+      row.appendChild(el("span",{}, t["e_"+p.type]||p.type));
+      const bar=el("span",{style:"display:flex;align-items:center;gap:8px"});
+      const track=el("i",{style:"display:block;width:76px;height:6px;border-radius:3px;background:var(--paper-3)"});
+      track.appendChild(el("span",{style:`display:block;height:100%;border-radius:3px;background:var(--accent);width:${Math.round(p.pct*100)}%`}));
+      bar.appendChild(track);
+      bar.appendChild(el("b",{class:"ct"}, String(p.n)));
+      row.appendChild(bar);
+      ec.appendChild(row);
+    });
+  }
+  root.appendChild(ec);
+
+  // confusions
+  const pairs=[];
+  for(const a in st.confusion) for(const b in st.confusion[a]) pairs.push([a,b,st.confusion[a][b]]);
+  pairs.sort((x,y)=>y[2]-x[2]);
+  if(pairs.length){
+    const cf=el("section",{class:"card"});
+    cf.appendChild(el("p",{class:"eyebrow"},t.confusions));
+    pairs.slice(0,6).forEach(([a,b,n])=>{
+      cf.appendChild(el("div",{class:"pair"},
+        el("span",{class:"lp"}, `${a} → ${b}`),
+        el("span",{class:"ct"}, String(n))));
+    });
+    root.appendChild(cf);
+  }
+
+  // history
+  const hs=el("section",{class:"card"});
+  hs.appendChild(el("p",{class:"eyebrow"},t.history));
+  hs.appendChild(el("div",{class:"pair"}, el("span",{},t.sessions), el("span",{class:"ct"},String(st.sessions.length))));
+  hs.appendChild(el("div",{class:"pair"}, el("span",{},t.total_trials), el("span",{class:"ct"},String(st.totalTrials))));
+  hs.appendChild(el("div",{class:"pair"}, el("span",{},isHe()?"רצף ארוך ביותר":"Longest streak"), el("span",{class:"ct"},String(st.longest))));
+  root.appendChild(hs);
+}
+function mini(k,v,d){
+  return el("div",{class:"mini"}, el("div",{class:"k"},k), el("div",{class:"v"},v), d?el("div",{class:"d"},d):null);
+}
+function accOverall(){
+  const ls=L().letterStats; let n=0,k=0;
+  for(const c in ls){ n+=ls[c].n; k+=ls[c].k; }
+  return n<5?null:k/n;
+}
+/* Tiny sparkline. lowerBetter flips the sense of the trend colour. */
+function spark(vals, lowerBetter){
+  const w=320,h=56,p=6;
+  const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("viewBox",`0 0 ${w} ${h}`); svg.setAttribute("class","spark");
+  svg.setAttribute("preserveAspectRatio","none"); svg.setAttribute("aria-hidden","true");
+  if(vals.length<2){
+    const line=document.createElementNS("http://www.w3.org/2000/svg","line");
+    line.setAttribute("x1",p);line.setAttribute("x2",w-p);line.setAttribute("y1",h/2);line.setAttribute("y2",h/2);
+    line.setAttribute("stroke","var(--rule)");line.setAttribute("stroke-width","1");
+    svg.appendChild(line); return svg;
+  }
+  const mn=Math.min(...vals), mx=Math.max(...vals), rg=(mx-mn)||1;
+  const pts=vals.map((v,i)=>[p+i*(w-2*p)/(vals.length-1), h-p-((v-mn)/rg)*(h-2*p)]);
+  const d="M"+pts.map(q=>q.map(z=>z.toFixed(1)).join(",")).join(" L");
+  const improving = lowerBetter ? vals[vals.length-1]<vals[0] : vals[vals.length-1]>vals[0];
+  const path=document.createElementNS("http://www.w3.org/2000/svg","path");
+  path.setAttribute("d",d); path.setAttribute("fill","none");
+  path.setAttribute("stroke", improving?"var(--good)":"var(--ink-3)");
+  path.setAttribute("stroke-width","2.5"); path.setAttribute("stroke-linejoin","round");
+  path.setAttribute("stroke-linecap","round");
+  svg.appendChild(path);
+  pts.forEach(q=>{ const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c.setAttribute("cx",q[0]);c.setAttribute("cy",q[1]);c.setAttribute("r","3");
+    c.setAttribute("fill", improving?"var(--good)":"var(--ink-3)"); svg.appendChild(c); });
+  return svg;
+}
+
+/* ============================================================
+   SCREEN — SETTINGS
+   ============================================================ */
+function screenSettings(root){
+  const t=T();
+  root.appendChild(el("h2",{},t.tab_settings));
+
+  const lang=el("section",{class:"card"});
+  lang.appendChild(el("p",{class:"eyebrow"},t.language));
+  lang.appendChild(el("h3",{},T().name));
+  lang.appendChild(el("p",{class:"muted"},t.switch_note));
+  lang.appendChild(el("button",{class:"btn ghost", onClick:()=>{
+    S.lang = isHe()?"en":"he"; PICK.clear(); PICK_SCALE=1; saveState(); go("today");
+  }}, t.switch_lang));
+  root.appendChild(lang);
+
+  /* ---- spoken instructions ---- */
+  const vc=el("section",{class:"card"});
+  vc.appendChild(el("p",{class:"eyebrow"},t.voice));
+  if(!TTS.supported()){
+    vc.appendChild(el("p",{class:"muted"},t.voice_unsupported));
+    if(TTS.framed()) vc.appendChild(el("div",{class:"note caution"},t.voice_blocked));
+  } else {
+    vc.appendChild(seg([[t.voice_off,false],[t.voice_on,true]], !!S.voice.on, v=>{
+      S.voice.on=v; if(!v) TTS.stop(); saveState(); render();
+    }));
+    if(S.voice.on){
+      const lab=x=>el("label",{style:"display:block;font-size:13px;letter-spacing:.08em;"+
+        "text-transform:uppercase;color:var(--ink-3);font-weight:650;margin:16px 0 8px"},x);
+      vc.appendChild(lab(t.voice_auto));
+      vc.appendChild(seg([[t.voice_auto_off,false],[t.voice_auto_on,true]], !!S.voice.auto, v=>{
+        S.voice.auto=v; saveState(); render();
+      }));
+      vc.appendChild(lab(t.voice_rate));
+      vc.appendChild(el("input",{type:"range",min:"0.5",max:"1.4",step:"0.05",value:String(S.voice.rate),
+        onInput:e=>{ S.voice.rate=parseFloat(e.target.value); saveState(); }}));
+
+      const status=el("div",{class:"voicebadge"});
+      const token = (TTS._token=(TTS._token||0)+1);   // stale-callback guard
+      const paint=()=>{
+        if(TTS._token!==token) return;
+        const dg=TTS.diagnose();
+        status.innerHTML="";
+        const line=(k,v,cls)=>status.appendChild(
+          el("div",{class:"diagline"+(cls?" "+cls:"")}, el("span",{},k), el("b",{},v)));
+        line(t.voice_found, String(dg.voiceCount), dg.voiceCount?"":"bad");
+        line("עברית", dg.he? dg.he.name : "—", dg.he?"":"bad");
+        line("English", dg.en? dg.en.name : "—", dg.en?"":"bad");
+        if(dg.everSpoke){ line(t.voice_diag, t.voice_ok, "good"); }
+        else if(dg.blocked || dg.error){
+          line(t.voice_diag, dg.error||"—", "bad");
+          status.appendChild(el("div",{class:"note caution",style:"margin-top:12px"},
+            TTS.framed()? t.voice_blocked : t.voice_no_audio));
+        } else if(!dg.tried){
+          status.appendChild(el("p",{class:"muted",style:"margin:10px 0 0"}, t.voice_press_test));
+        }
+        if(!dg.he && dg.voiceCount>0){
+          const box=el("div",{class:"note caution",style:"margin-top:12px"});
+          box.appendChild(el("h3",{style:"margin-bottom:6px"}, t.voice_he_missing));
+          box.appendChild(el("p",{style:"margin-bottom:10px"}, t.voice_he_why));
+          box.appendChild(el("p",{class:"eyebrow",style:"margin-bottom:4px"}, t.voice_install));
+          box.appendChild(el("p",{style:"margin-bottom:0"}, t["voice_i_"+TTS.platform()] || t.voice_i_other));
+          status.appendChild(box);
+          status.appendChild(el("div",{style:"height:12px"}));
+          status.appendChild(el("p",{class:"eyebrow",style:"margin-bottom:6px"}, t.voice_force));
+          status.appendChild(seg([[t.voice_off,false],[t.voice_on,true]], !!S.voice.force, v=>{
+            S.voice.force=v; saveState(); render();
+          }));
+          status.appendChild(el("p",{class:"muted",style:"margin:8px 0 0;font-size:13px"}, t.voice_force_note));
+        }
+        const vlist=el("div",{style:"margin-top:16px"});
+        vlist.appendChild(el("p",{class:"eyebrow",style:"margin-bottom:6px"}, t.voice_devices));
+        if(!dg.all.length) vlist.appendChild(el("p",{class:"muted"}, t.voice_none_found));
+        dg.all.slice(0,40).forEach(v=>{
+          const isHeV = /^(he|iw)/i.test(v.lang||"");
+          vlist.appendChild(el("div",{class:"diagline"+(isHeV?" good":"")},
+            el("span",{},v.name), el("b",{},v.lang)));
+        });
+        status.appendChild(vlist);
+      };
+      TTS.onstatus = paint;
+      vc.appendChild(el("div",{style:"height:16px"}));
+      vc.appendChild(el("button",{class:"btn ghost", onClick:()=>{ TTS.speak(t.voice_test_text); paint(); }},
+        t.voice_test));
+      vc.appendChild(status);
+      paint();
+      vc.appendChild(el("p",{class:"muted",style:"margin:14px 0 0;font-size:13.5px"}, t.voice_note));
+    }
+  }
+  root.appendChild(vc);
+
+  const look=el("section",{class:"card"});
+  look.appendChild(el("p",{class:"eyebrow"},t.appearance));
+  look.appendChild(el("p",{class:"muted"},isHe()
+    ? "אלה ההגדרות שבהן יוצג כל טקסט באפליקציה. שווה לנסות כמה צירופים ולראות מה מרגיש קל יותר."
+    : "Every piece of text in the app is shown with these settings. Try a few combinations and see what feels easier."));
+  look.appendChild(el("button",{class:"btn ghost", onClick:openLook}, t.appearance));
+  root.appendChild(look);
+
+  if(isHe()){
+    const nk=el("section",{class:"card"});
+    nk.appendChild(el("p",{class:"eyebrow"},t.nikud));
+    nk.appendChild(seg([[t.nikud_off,false],[t.nikud_on,true]], S.look.nikud, v=>{S.look.nikud=v;saveState();render();}));
+    nk.appendChild(el("p",{class:"muted",style:"margin:10px 0 0"},t.nikud_note));
+    root.appendChild(nk);
+  }
+
+  const dc=el("section",{class:"card"});
+  dc.appendChild(el("p",{class:"eyebrow"},t.data));
+  dc.appendChild(el("div",{class:"diagline"},
+    el("span",{},t.data_rows), el("b",{},String(TRIALS.length))));
+  dc.appendChild(el("div",{class:"diagline"+(STORE.mode==="memory"?" bad":"")},
+    el("span",{},t.data_where),
+    el("b",{}, STORE.mode==="memory"? t.data_memory : t.data_local)));
+  if(STORE.mode==="memory") dc.appendChild(el("div",{class:"note caution",style:"margin-top:12px"}, t.data_warn));
+  if(STORE.quotaHit) dc.appendChild(el("div",{class:"note caution",style:"margin-top:12px"}, t.storage_full));
+  const flash=el("p",{class:"muted",style:"min-height:20px;margin:10px 0 0"});
+  const doExport=async(text,name,mime)=>{
+    const r=await saveFile(text,name,mime);
+    flash.textContent = r==="clipboard" ? t.copied : r==="failed" ? "—" : name;
+  };
+  dc.appendChild(el("div",{style:"height:12px"}));
+  dc.appendChild(el("button",{class:"btn", onClick:()=>
+    doExport(trialsCSV(), `lexia-trials-${stamp()}.csv`)}, t.export_csv));
+  dc.appendChild(el("div",{style:"height:8px"}));
+  dc.appendChild(el("button",{class:"btn ghost", onClick:()=>
+    doExport(summaryCSV(), `lexia-summary-${stamp()}.csv`)}, t.export_sum));
+  dc.appendChild(el("div",{style:"height:8px"}));
+  dc.appendChild(el("button",{class:"btn ghost", onClick:()=>
+    doExport(backupJSON(), `lexia-backup-${stamp()}.json`, "application/json")}, t.export_json));
+  dc.appendChild(el("div",{style:"height:8px"}));
+  dc.appendChild(el("button",{class:"btn ghost", onClick:async()=>{
+    try{ await navigator.clipboard.writeText(trialsCSV()); flash.textContent=t.copied; }
+    catch(e){ flash.textContent="—"; }
+  }}, t.copy_csv));
+  dc.appendChild(flash);
+  dc.appendChild(el("p",{class:"muted",style:"margin:10px 0 0;font-size:13.5px"}, t.data_note));
+  root.appendChild(dc);
+
+  const vc2=el("section",{class:"card"});
+  vc2.appendChild(el("p",{class:"eyebrow"},t.version));
+  vc2.appendChild(el("div",{class:"diagline"},
+    el("span",{},"LEXIA"), el("b",{}, APP_VERSION+" · "+BUILD)));
+  const standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
+                     || window.navigator.standalone===true;
+  if(UPDATE_READY) vc2.appendChild(el("div",{class:"note",style:"margin-top:12px"}, t.update_ready));
+  else if("serviceWorker" in navigator && navigator.serviceWorker.controller)
+    vc2.appendChild(el("p",{class:"muted",style:"margin:10px 0 0"}, t.offline_ready));
+  if(!standalone) vc2.appendChild(el("p",{class:"muted",style:"margin:10px 0 0"}, t.install_hint));
+  root.appendChild(vc2);
+
+  const ab=el("section",{class:"card"});
+  ab.appendChild(el("p",{class:"eyebrow"},t.about));
+  ab.appendChild(el("p",{},t.about_body));
+  root.appendChild(ab);
+
+  const rs=el("section",{class:"card"});
+  const rsBtn=el("button",{class:"btn ghost", onClick:()=>{
+    rs.innerHTML="";
+    rs.appendChild(el("p",{},t.reset_confirm));
+    const row=el("div",{class:"btnrow"});
+    row.appendChild(el("button",{class:"btn ghost", onClick:()=>render()}, t.cancel));
+    row.appendChild(el("button",{class:"btn", style:"background:var(--bad);border-color:var(--bad)",
+      onClick:async()=>{ S=freshState(); TRIALS=[]; TRIALS_DIRTY=true;
+                         await flushState(); render(); }}, t.reset_yes));
+    rs.appendChild(row);
+  }}, t.reset);
+  rs.appendChild(rsBtn);
+  root.appendChild(rs);
+}
+
+function seg(options, current, onPick){
+  const s=el("div",{class:"seg"});
+  options.forEach(([label,val])=>{
+    s.appendChild(el("button",{"aria-pressed": String(val===current), onClick:()=>onPick(val)}, label));
+  });
+  return s;
+}
+
+/* ---------- appearance sheet ---------- */
+function openLook(){
+  const t=T(), k=S.look;
+  const sheet=el("div",{class:"sheet", onClick:e=>{ if(e.target===sheet) sheet.remove(); }});
+  const b=el("div",{class:"sheetbody"});
+  b.appendChild(el("h2",{},t.appearance));
+  const sample=el("div",{class:"passage",style:"margin-top:0"},
+    el("p",{}, isHe()? "הילד קרא את הספר ליד החלון." : "The boy read the book by the window."));
+  b.appendChild(sample);
+
+  const rerender=()=>{ applyLook(); saveState(); };
+
+  const f1=el("div",{class:"field"}); f1.appendChild(el("label",{},t.font));
+  f1.appendChild(seg([[t.f_sans,"sans"],[t.f_serif,"serif"],[t.f_round,"round"],[t.f_mono,"mono"]], k.font,
+    v=>{k.font=v;rerender();refresh();}));
+  b.appendChild(f1);
+
+  const mkRange=(labelText,min,max,step,get,set)=>{
+    const f=el("div",{class:"field"}); f.appendChild(el("label",{},labelText));
+    const i=el("input",{type:"range",min,max,step,value:get(),
+      onInput:e=>{ set(parseFloat(e.target.value)); rerender(); }});
+    f.appendChild(i); return f;
+  };
+  b.appendChild(mkRange(t.size,16,52,1,()=>k.size,v=>k.size=v));
+  b.appendChild(mkRange(t.tracking,0,0.24,0.02,()=>k.track,v=>k.track=v));
+  b.appendChild(mkRange(t.leading,1.2,2.4,0.1,()=>k.leading,v=>k.leading=v));
+
+  const f4=el("div",{class:"field"}); f4.appendChild(el("label",{},t.theme));
+  f4.appendChild(seg([[t.th_light,"light"],[t.th_dark,"dark"],[t.th_contrast,"contrast"]], k.theme,
+    v=>{k.theme=v;rerender();refresh();}));
+  b.appendChild(f4);
+
+  if(isHe()){
+    const f5=el("div",{class:"field"}); f5.appendChild(el("label",{},t.nikud));
+    f5.appendChild(seg([[t.nikud_off,false],[t.nikud_on,true]], k.nikud, v=>{k.nikud=v;saveState();refresh();}));
+    b.appendChild(f5);
+  }
+
+  b.appendChild(el("button",{class:"btn", onClick:()=>{ sheet.remove(); if(!SESS && !ASS) render(); }}, t.close));
+  sheet.appendChild(b); document.body.appendChild(sheet);
+
+  function refresh(){ sheet.remove(); openLook(); }
+}
+
+/* ============================================================
+   SESSION PLANNER
+   Composes blocks for the time budget, weighted to the stage and
+   to what the person is currently worst at.
+   ============================================================ */
+const EXERCISES = [
+  {code:"letter_flash", stage:1, n:12, grade:"x"},
+  {code:"letter_find",  stage:1, n:10, grade:"v"},
+  {code:"trace",        stage:1, n:4,  grade:"v"},
+  {code:"word_flash",   stage:2, n:12, grade:"x"},
+  {code:"word_pick",    stage:2, n:10, grade:"v"},
+  {code:"root",         stage:2, n:8,  grade:"x", only:"he"},
+  {code:"finals",       stage:2, n:8,  grade:"x", only:"he"},
+  {code:"case",         stage:2, n:8,  grade:"x", only:"en"},
+  {code:"sentence",     stage:3, n:6,  grade:"v"},
+  {code:"mor",          stage:4, n:1,  grade:"v"},
+  {code:"real",         stage:5, n:1,  grade:"v"}
+];
+const catalogue = () => EXERCISES.filter(e=>!e.only || e.only===S.lang);
+
+/* Launch exactly what the person asked for, nothing bundled around it. */
+function startExercises(codes, scale){
+  const by={}; catalogue().forEach(e=>by[e.code]=e);
+  const blocks = codes.filter(c=>by[c]).map(c=>({
+    kind:c, n: Math.max(1, Math.round(by[c].n * (scale||1)))
+  }));
+  if(!blocks.length) return;
+  startSession({blocks, minutes:0, stage:L().stage, custom:true});
+}
+
+function planSession(minutes, forceStage){
+  const st=L(); const stage = forceStage || st.stage;
+  const dom = dominantError();
+  // an unrelated-answer pattern is a fatigue signal, so shorten rather than drill
+  const mins = minutes || ((dom && dom.type==="unrelated") ? 8 : 12);
+  const blocks=[];
+  const push=(kind,n,extra={})=>blocks.push(Object.assign({kind,n},extra));
+
+  if(stage===1){
+    push("letter_flash", mins<=3?6:12);
+    push("letter_find", mins<=3?4:10);
+    if(mins>3) push("trace", 3);
+  } else if(stage===2){
+    push("letter_flash", 6);
+    push("word_flash", mins<=3?6:12);
+    push("word_pick", mins<=3?4:8);
+    if(mins>3) push(isHe()?"root":"case", 6);
+    if(mins>3 && isHe()) push("finals", 5);
+  } else if(stage===3){
+    push("word_flash", 8);
+    push("sentence", mins<=3?3:6);
+    if(mins>3) push("word_pick", 6);
+  } else if(stage===4){
+    push("word_flash", 6);
+    push("mor", 1);
+    push("sentence", 4);
+  } else {
+    push("mor", 1);
+    push("real", 1);
+    push("word_flash", 6);
+  }
+  /* Targeted remediation: the dominant error class earns its own block. */
+  if(dom && mins>3){
+    const add = {
+      similar_letter:"letter_find",
+      final_form: isHe()? "finals" : null,
+      letter_case: isHe()? null : "case",
+      morphology: isHe()? "root" : "word_pick",
+      letter_order:"word_pick",
+      truncation:"word_pick",
+      word_onset:"letter_find",
+      length:"word_pick"
+    }[dom.type];
+    if(add){
+      const existing = blocks.find(b=>b.kind===add);
+      if(existing) existing.n += 4; else blocks.splice(1,0,{kind:add, n:6});
+    }
+  }
+  return {blocks, minutes:mins, stage, focus: dom? dom.type : null};
+}
+
+/* ============================================================
+   SESSION RUNNER
+   One state machine drives every exercise type. Every trial logs
+   latency, correctness and the item, because those three things
+   are the whole measurement layer.
+   ============================================================ */
+let SESS=null;
+
+/* A session that dies to a screen lock or an accidental refresh takes its
+   partial data with it, so the plan is parked where it can be picked up. */
+/* Write (or update) this session's row now, rather than hoping it ends cleanly. */
+function commitSession(reason){
+  if(!SESS) return;
+  const st=L(), s=SESS;
+  const row = {t:s.t0, sec:Math.round((Date.now()-s.t0)/1000), n:s.n, k:s.correct,
+               ended:reason||"in_progress", id:s.id};
+  const i = st.sessions.findIndex(x=>x.id===s.id);
+  if(i>=0) st.sessions[i]=row; else st.sessions.push(row);
+  st.totalTrials = (st.committedTrials||0) + s.n;
+  return row;
+}
+function sealSession(){
+  const st=L();
+  st.committedTrials = st.totalTrials;
+}
+function parkSession(){
+  if(!SESS) return;
+  commitSession("in_progress");
+  S.pending = {plan:SESS.plan, bi:SESS.bi, ti:SESS.ti, n:SESS.n, correct:SESS.correct,
+               id:SESS.id, t0:SESS.t0, lang:S.lang, at:Date.now()};
+  saveState();
+}
+function clearParked(){ if(S.pending){ delete S.pending; saveState(); } }
+function resumeSession(){
+  const p=S.pending; if(!p) return false;
+  SESS = {plan:p.plan, bi:p.bi, ti:p.ti, t0:p.t0||Date.now(), id:p.id,
+          trials:[], correct:p.correct||0, n:p.n||0, ended:null,
+          rtWindow:[], warned:false, letterBag:[], wordBag:[], said:{}};
+  clearParked(); requestWake();
+  open(sessionScreen);
+  return true;
+}
+
+/* Reading a passage can take minutes with no touch input; without this the
+   screen sleeps mid-read and the timer keeps counting. */
+let WAKE=null;
+async function requestWake(){
+  try{ if(navigator.wakeLock && !WAKE) WAKE = await navigator.wakeLock.request("screen"); }catch(e){}
+}
+function releaseWake(){ try{ WAKE && WAKE.release(); }catch(e){} WAKE=null; }
+
+function startSession(plan){
+  requestWake();
+  SESS = {
+    plan, bi:0, ti:0, t0:Date.now(),
+    id: "s"+Date.now().toString(36),
+    trials:[], correct:0, n:0, ended:null,
+    rtWindow:[], warned:false,
+    letterBag:[], wordBag:[]
+  };
+  markDay();
+  open(sessionScreen);
+}
+function sessEnd(reason){
+  const st=L(), s=SESS;
+  releaseWake(); clearParked();
+  const row = commitSession(reason);
+  sealSession();
+  const sec = row.sec;
+  addXP(Math.round(s.n*4 + sec/6));
+  maybeAdvanceStage();
+  flushState();
+  open(()=>summaryScreen(sec, reason));
+}
+/* Advancement is criterion-based: mastery of what the stage trains,
+   not time served. */
+function maybeAdvanceStage(){
+  const st=L();
+  if(st.stage===1){
+    const m=C().letters.filter(x=>letterMastery(x)>=0.8).length;
+    if(m >= Math.ceil(C().letters.length*0.8)) st.stage=2;
+  } else if(st.stage===2){
+    const ws=Object.values(st.wordStats); const seen=ws.length;
+    const acc=ws.reduce((a,b)=>a+b.k,0)/Math.max(1,ws.reduce((a,b)=>a+b.n,0));
+    if(seen>=40 && acc>=0.85) st.stage=3;
+  } else if(st.stage===3){
+    const c=st.compHistory.slice(-8);
+    if(c.length>=6 && c.reduce((a,b)=>a+b.pct,0)/c.length >= 0.7) st.stage=4;
+  } else if(st.stage===4){
+    const reads=Object.values(st.passageReads).reduce((a,b)=>a+b,0);
+    const comp=st.compHistory.slice(-8);
+    if(reads>=12 && comp.length>=4 && comp.reduce((a,b)=>a+b.pct,0)/comp.length >= 0.7) st.stage=5;
+  }
+}
+function logTrial(o){
+  const s=SESS; s.n++; if(o.ok) s.correct++;
+  if(o.kind){ const es=L().exerciseStats, e=es[o.kind]||(es[o.kind]={n:0,k:0}); e.n++; if(o.ok) e.k++; }
+  if(s.n % 5 === 0) commitSession("in_progress");
+  // classify BEFORE recording, or the err column exports empty
+  if(o.ok===false && o.item!==undefined && "resp" in o){
+    const cls0 = noteError(o.item, o.resp, o.lang);
+    if(cls0) o.err = cls0.type;
+  }
+  recordTrial({
+    ts: Date.now(),
+    session: s.id,
+    lang: S.lang,
+    seq: s.n,
+    minute: +((Date.now()-s.t0)/60000).toFixed(2),   // position in session: fatigue covariate
+    kind: o.kind || "",
+    item: o.item===undefined? "" : String(o.item),
+    len: o.item!==undefined && o.item!==null ? [...String(o.item)].length : "",
+    resp: o.resp===undefined||o.resp===null? "" : String(o.resp),
+    ok: o.ok===true ? 1 : 0,
+    rt: o.rt===undefined? "" : o.rt,
+    exposure: o.exposure===undefined? "" : o.exposure,
+    err: o.err || "",
+    nikud: (S.lang==="he" && S.look.nikud) ? 1 : 0,
+    font: S.look.font, size: S.look.size, track: S.look.track, theme: S.look.theme,
+    stage: L().stage
+  });
+  s.trials.push(o);
+  s.rtWindow.push({ok:o.ok, rt:o.rt||0});
+  if(s.rtWindow.length>26) s.rtWindow.shift();
+}
+/* Fatigue: compare the back half of the rolling window with the front. */
+function fatigued(){
+  const w=SESS.rtWindow;
+  if(SESS.warned || w.length<18) return false;
+  const half=Math.floor(w.length/2);
+  const a=w.slice(0,half), b=w.slice(half);
+  const accA=a.filter(x=>x.ok).length/a.length, accB=b.filter(x=>x.ok).length/b.length;
+  const rtA=a.reduce((s,x)=>s+x.rt,0)/a.length, rtB=b.reduce((s,x)=>s+x.rt,0)/b.length;
+  return (accB < accA-0.2 && accB<0.65) || (rtA>0 && rtB > rtA*1.55);
+}
+
+function sessionScreen(){
+  const s=SESS;
+  if(!s) { return el("div",{class:"screen"}); }
+  const block = s.plan.blocks[s.bi];
+  if(!block){ later(()=>sessEnd("completed"),0); return el("div",{class:"screen"}); }
+  if(s.ti>=block.n){ s.bi++; s.ti=0; parkSession(); return sessionScreen(); }
+  if(fatigued()){ s.warned=true; return breakScreen(); }
+
+  const wrap=el("div",{class:"screen",style:"padding-top:14px"});
+  wrap.appendChild(sessionHeader());
+  const host=el("div",{});
+  wrap.appendChild(host);
+  const runner = {
+    letter_flash: runLetterFlash, letter_find: runLetterFind, trace: runTrace,
+    word_flash: runWordFlash, word_pick: runWordPick, root: runRoot,
+    finals: runFinals, case: runCase, sentence: runSentence,
+    mor: runMor, real: runReal
+  }[block.kind];
+  runner(host, ()=>{ s.ti++; open(sessionScreen); });
+  return wrap;
+}
+function sessionHeader(){
+  const s=SESS, t=T();
+  const head=el("div",{style:"display:flex;align-items:center;gap:12px;margin-bottom:6px"});
+  head.appendChild(el("button",{class:"iconbtn","aria-label":t.quit, onClick:()=>later(()=>sessEnd("user_quit"),0)},"✕"));
+  head.appendChild(el("div",{class:"eyebrow",style:"margin:0;flex:1"},
+    `${exName(s.plan.blocks[s.bi].kind)} · ${s.ti+1}/${s.plan.blocks[s.bi].n}`));
+  const bar=el("div",{class:"sessbar",style:"flex:2;margin:0"});
+  s.plan.blocks.forEach((b,i)=>bar.appendChild(el("i",{class: i<s.bi?"done": i===s.bi?"now":""})));
+  head.appendChild(bar);
+  return head;
+}
+function exName(k){
+  const t=T();
+  return {letter_flash:t.ex_letter_flash, letter_find:t.ex_letter_discrim, trace:t.ex_trace,
+    word_flash:t.ex_word_flash, word_pick:t.ex_word_pick, root:t.ex_root, finals:t.ex_final,
+    case:t.ex_case, sentence:t.ex_sentence, mor:t.ex_mor, real:t.free_read}[k]||"";
+}
+function breakScreen(){
+  const t=T();
+  const w=el("div",{class:"screen"});
+  const c=el("section",{class:"card"});
+  c.appendChild(el("h2",{},t.break_title));
+  c.appendChild(el("p",{},t.break_body));
+  const lb=listenBtn(t.break_title+". "+t.break_body);
+  if(lb) c.appendChild(el("div",{class:"listenrow"}, lb));
+  announce(t.break_title+". "+t.break_body);
+  c.appendChild(el("button",{class:"btn", onClick:()=>sessEnd("fatigue")}, t.break_end));
+  c.appendChild(el("div",{style:"height:10px"}));
+  c.appendChild(el("button",{class:"btn ghost", onClick:()=>{ SESS.rtWindow=[]; open(sessionScreen); }}, t.break_go));
+  w.appendChild(c);
+  return w;
+}
+
+/* ---------- session summary ---------- */
+function summaryScreen(sec, reason){
+  const t=T(), s=SESS, st=L();
+  const w=el("div",{class:"screen"});
+  w.appendChild(el("h2",{style:"margin-top:20px"},t.sess_done));
+  const grid=el("div",{class:"metricgrid",style:"margin-bottom:18px"});
+  grid.appendChild(mini(t.time, fmtT(sec), ""));
+  grid.appendChild(mini(t.accuracy, s.n? Math.round(100*s.correct/s.n)+"%":"—",""));
+  w.appendChild(grid);
+
+  const c=el("section",{class:"card"});
+  c.appendChild(el("p",{class:"eyebrow"},t.what_moved));
+  const lines=[];
+  const byLen={};
+  s.trials.filter(x=>x.kind==="word_flash"&&x.ok).forEach(x=>{
+    (byLen[x.len]=byLen[x.len]||[]).push(x.rt);
+  });
+  Object.keys(byLen).sort().forEach(k=>{
+    const a=byLen[k]; const avg=Math.round(a.reduce((x,y)=>x+y,0)/a.length);
+    lines.push(isHe()? `מילים של ${k} אותיות: ${avg} מילישניות בממוצע`
+                     : `${k}-letter words: ${avg} ms on average`);
+  });
+  const todayErr={};
+  s.trials.forEach(x=>{ if(x.err) todayErr[x.err]=(todayErr[x.err]||0)+1; });
+  const topErr=Object.entries(todayErr).filter(([k])=>k!=="unsure").sort((a,b)=>b[1]-a[1])[0];
+  if(topErr) lines.push((t["e_"+topErr[0]]||topErr[0])+" — "+topErr[1]);
+  const errs={};
+  s.trials.forEach(x=>{ if(!x.ok && x.item) errs[x.item]=(errs[x.item]||0)+1; });
+  const worst=Object.entries(errs).sort((a,b)=>b[1]-a[1])[0];
+  if(worst) lines.push(isHe()? `${worst[0]} — ${worst[1]} טעויות היום`
+                             : `${worst[0]} — ${worst[1]} errors today`);
+  if(!lines.length) lines.push(t.nothing_yet);
+  lines.forEach(l=>c.appendChild(el("div",{class:"pair"}, el("span",{},l))));
+  if(worst) c.appendChild(el("p",{class:"muted",style:"margin-top:12px"}, `${t.tomorrow} ${worst[0]}.`));
+  const spokenSum = `${t.sess_done}. ${t.time} ${fmtT(sec)}. ${t.accuracy} ${s.n?Math.round(100*s.correct/s.n):0} ${isHe()?"אחוז":"percent"}. ${lines.join(". ")}`;
+  const sb=listenBtn(spokenSum); if(sb) c.appendChild(el("div",{class:"listenrow",style:"margin:12px 0 0"}, sb));
+  announce(spokenSum);
+  w.appendChild(c);
+
+  if(reason==="fatigue"){
+    w.appendChild(el("div",{class:"note"},
+      isHe()? "סיימנו מוקדם כי הקצב ירד. להגיע ולהתעייף זה בדיוק מה שצריך."
+            : "We stopped early because your pace dropped. Turning up and getting tired is exactly the work."));
+  }
+  w.appendChild(el("button",{class:"btn", onClick:()=>{ SESS=null; go("today"); }}, t.done));
+  return w;
+}
+
+/* ============================================================
+   EXERCISE RUNNERS
+   ============================================================ */
+let TIMERS=[];
+function later(fn,ms){ const id=setTimeout(fn,ms); TIMERS.push(id); return id; }
+function clearTimers(){ TIMERS.forEach(id=>{clearTimeout(id);clearInterval(id);}); TIMERS=[]; }
+
+function makeStage(){
+  const s=el("div",{class:"stage"});
+  s.appendChild(el("div",{class:"reg1"})); s.appendChild(el("div",{class:"reg2"}));
+  const inner=el("div",{}); s.appendChild(inner); s._in=inner;
+  return s;
+}
+function maskFor(text){ return "▨".repeat(Math.max(1, [...text].length)); }
+
+/* Present a stimulus for `ms`, then mask it. Calls back with onset time. */
+function flash(stageEl, text, ms, cls, after){
+  TTS.stop();                 // speech during a timed trial corrupts the latency
+  const inner=stageEl._in;
+  inner.innerHTML="";
+  inner.appendChild(el("div",{class:"fixation"},"+"));
+  later(()=>{
+    inner.innerHTML="";
+    inner.appendChild(el("div",{class:"stim "+(cls||"")},text));
+    const onset=performance.now();
+    later(()=>{
+      inner.innerHTML="";
+      inner.appendChild(el("div",{class:"mask"}, maskFor(text)));
+      later(()=>{ inner.innerHTML=""; after(onset); }, 220);
+    }, ms);
+  }, 420);
+}
+
+function choiceGrid(items, correctItem, onPick, opts={}){
+  const t=T();
+  const show = opts.render || (x=>String(x));
+  const g=el("div",{class:"choices"});
+  items.forEach(it=>{
+    const b=el("button",{class:"choice"+(opts.wide?" wide":""), onClick:()=>{
+      const ok = it===correctItem;
+      [...g.children].forEach(c=>{ c.disabled=true; });
+      b.classList.add(ok?"correct":"wrong");
+      if(!ok) [...g.children].forEach(c=>{ if(c.textContent===show(correctItem)) c.classList.add("reveal"); });
+      later(()=>onPick(it, ok), ok?380:900);
+    }}, show(it));
+    g.appendChild(b);
+  });
+  const ns=el("button",{class:"choice wide", style:"font-size:16px;color:var(--ink-3)", onClick:()=>{
+    [...g.children].forEach(c=>c.disabled=true);
+    onPick(null,false);
+  }}, t.not_sure);
+  g.appendChild(ns);
+  return g;
+}
+
+/* --- letter in brief exposure, adaptive --- */
+function runLetterFlash(host, done){
+  const t=T(), st=L();
+  const target = SESS.letterBag.length? SESS.letterBag.pop() : (SESS.letterBag = weakLetters(14), SESS.letterBag.pop());
+  const ms = st.exposure.letter;
+  const stage=makeStage(); host.appendChild(stage);
+  const prompt=el("p",{class:"muted center",style:"min-height:24px"});
+  host.appendChild(prompt);
+  flash(stage, target, ms, "", onset=>{
+    prompt.textContent=t.which_letter;
+    announceOnce("lf", t.which_letter);
+    const opts=shuffle([target, ...distractors(target,3)]);
+    host.appendChild(choiceGrid(opts, target, (pick,ok)=>{
+      const rt=performance.now()-onset;
+      noteLetter(target, ok, rt);
+      stair("letter", ok);
+      logTrial({kind:"letter_flash", item:target, resp:pick, ok, rt:Math.round(rt), exposure:ms});
+      saveState(); done();
+    }));
+  });
+}
+
+/* --- find the target among visually similar letters --- */
+function runLetterFind(host, done){
+  const t=T();
+  const target = rnd(weakLetters(1));
+  const foils = distractors(target, 5);
+  const opts = shuffle([target, ...foils]);
+  const fh=el("p",{class:"eyebrow center"},t.find_letter);
+  host.appendChild(fh);
+  const flb=listenBtn(t.find_letter,{compact:true});
+  if(flb) host.appendChild(el("div",{class:"listenrow",style:"justify-content:center"}, flb));
+  announceOnce("find", t.find_letter);
+  const stage=makeStage(); stage.style.minHeight="130px";
+  stage._in.appendChild(el("div",{class:"stim"},target));
+  host.appendChild(stage);
+  const t0=performance.now();
+  const g=el("div",{class:"choices",style:"grid-template-columns:repeat(3,1fr)"});
+  opts.forEach(o=>{
+    g.appendChild(el("button",{class:"choice", onClick:e=>{
+      const ok=o===target, rt=performance.now()-t0;
+      [...g.children].forEach(c=>c.disabled=true);
+      e.currentTarget.classList.add(ok?"correct":"wrong");
+      noteLetter(target, ok, rt);
+      logTrial({kind:"letter_find", item:target, resp:o, ok, rt:Math.round(rt)});
+      saveState(); later(done, ok?350:800);
+    }}, o));
+  });
+  host.appendChild(g);
+}
+
+/* --- tactile-kinesthetic tracing. Scored against the actual glyph
+       pixels: coverage of the letter, plus how much of the drawn
+       path stayed on it. --- */
+function runTrace(host, done){
+  const t=T();
+  const target = rnd(weakLetters(1));
+  host.appendChild(el("p",{class:"eyebrow center"},t.trace_title));
+  const tlb=listenBtn(t.trace_title,{compact:true});
+  if(tlb) host.appendChild(el("div",{class:"listenrow",style:"justify-content:center"}, tlb));
+  announceOnce("trace", t.trace_title);
+  const size = Math.min(300, (window.innerWidth||360)-56);
+  const wrap=el("div",{class:"stage"}); wrap.appendChild(el("div",{class:"reg1"})); wrap.appendChild(el("div",{class:"reg2"}));
+  const cv=el("canvas",{class:"trace", width:size, height:size});
+  wrap.appendChild(cv); host.appendChild(wrap);
+
+  const ctx=cv.getContext && cv.getContext("2d");
+  const off=document.createElement("canvas"); off.width=size; off.height=size;
+  const octx=off.getContext && off.getContext("2d");
+  if(!ctx || !octx){   // canvas unavailable: fall back to naming the letter
+    wrap.removeChild(cv);
+    wrap.appendChild(el("div",{class:"stim"},target));
+    host.appendChild(el("button",{class:"btn",style:"margin-top:12px",onClick:()=>{
+      noteLetter(target,true,1200); logTrial({kind:"trace",item:target,ok:true,rt:1200});
+      saveState(); done();
+    }}, t.trace_next));
+    return;
+  }
+  const fontPx=Math.round(size*0.78);
+  const setFont=c=>{ c.font=`500 ${fontPx}px ${getComputedStyle(document.documentElement).getPropertyValue("--read-font")}`;
+                     c.textAlign="center"; c.textBaseline="middle"; };
+  setFont(octx); octx.fillStyle="#000"; octx.fillText(target, size/2, size/2);
+  const ink=octx.getImageData(0,0,size,size).data;
+
+  const step=4, gw=Math.floor(size/step);
+  const inkCells=[]; const inkSet=new Set();
+  for(let y=0;y<gw;y++) for(let x=0;x<gw;x++){
+    const a=ink[((y*step)*size+(x*step))*4+3];
+    if(a>60){ inkCells.push(y*gw+x); inkSet.add(y*gw+x); }
+  }
+  const drawGhost=()=>{
+    ctx.clearRect(0,0,size,size);
+    setFont(ctx);
+    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue("--rule");
+    ctx.fillText(target, size/2, size/2);
+  };
+  drawGhost();
+
+  let drawing=false, pts=[], touched=new Set(), onInk=0, total=0;
+  const posOf=e=>{ const r=cv.getBoundingClientRect();
+    return [ (e.clientX-r.left)*size/r.width, (e.clientY-r.top)*size/r.height ]; };
+  const mark=(x,y)=>{
+    total++;
+    const gx=Math.floor(x/step), gy=Math.floor(y/step);
+    let hit=false;
+    for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++){
+      const k=(gy+dy)*gw+(gx+dx);
+      if(inkSet.has(k)){ touched.add(k); hit=true; }
+    }
+    if(hit) onInk++;
+  };
+  cv.addEventListener("pointerdown",e=>{ drawing=true; if(cv.setPointerCapture) try{cv.setPointerCapture(e.pointerId)}catch(_){}
+    const p=posOf(e); pts=[p]; mark(p[0],p[1]);
+    ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue("--accent");
+    ctx.lineWidth=Math.max(10,size*0.055); ctx.lineCap="round"; ctx.lineJoin="round";
+    ctx.beginPath(); ctx.moveTo(p[0],p[1]); });
+  cv.addEventListener("pointermove",e=>{ if(!drawing) return;
+    const p=posOf(e); mark(p[0],p[1]); ctx.lineTo(p[0],p[1]); ctx.stroke(); });
+  const up=()=>{ drawing=false; };
+  cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
+
+  const score=el("p",{class:"muted center",style:"min-height:26px"});
+  host.appendChild(score);
+  const row=el("div",{class:"btnrow"});
+  row.appendChild(el("button",{class:"btn ghost", onClick:()=>{
+    touched=new Set(); onInk=0; total=0; score.textContent=""; drawGhost();
+  }}, t.trace_again));
+  row.appendChild(el("button",{class:"btn", onClick:()=>{
+    const coverage = inkCells.length? touched.size/inkCells.length : 0;
+    const precision = total? onInk/total : 0;
+    const sc = clamp(coverage*0.65 + precision*0.35, 0, 1);
+    const ok = sc>=0.5;
+    score.textContent = `${t.trace_score}: ${Math.round(sc*100)}%`;
+    if(S.voice && S.voice.on) TTS.speak(letterName(target));
+    noteLetter(target, ok, 1200);
+    logTrial({kind:"trace", item:target, ok, rt:1200, score:Math.round(sc*100)});
+    saveState(); later(done, 700);
+  }}, t.trace_next));
+  host.appendChild(row);
+}
+
+/* --- word in brief exposure, adaptive --- */
+function runWordFlash(host, done){
+  const t=T(), st=L();
+  if(!SESS.wordBag.length){
+    const stage=st.stage;
+    const dom = dominantError();
+    let lens = stage<=2? [3,3,4,4,5] : stage===3? [4,5,5,6,6] : [5,6,6,7,8];
+    if(dom && (dom.type==="truncation" || dom.type==="length")){
+      lens = lens.map(n=>Math.max(3, n-1));   // pull back within reach
+    }
+    SESS.wordBag = shuffle(lens.map(n=>rnd(C().words[n]||C().words[4])));
+  }
+  const target = SESS.wordBag.pop();
+  const ms = st.exposure.word;
+  const stage=makeStage(); host.appendChild(stage);
+  const prompt=el("p",{class:"muted center",style:"min-height:24px"});
+  host.appendChild(prompt);
+  flash(stage, displayWord(target), ms, "word", onset=>{
+    prompt.textContent=t.which_word;
+    announceOnce("wf", t.which_word);
+    const opts=shuffle([target, ...wordDistractors(target,3)]);
+    host.appendChild(choiceGrid(opts, target, (pick,ok)=>{
+      const rt=performance.now()-onset;
+      const ws=st.wordStats; const w=ws[target]||(ws[target]={n:0,k:0});
+      w.n++; if(ok) w.k++;
+      stair("word", ok);
+      logTrial({kind:"word_flash", item:target, resp:pick, ok, rt:Math.round(rt),
+                len:[...target].length, exposure:ms});
+      saveState(); done();
+    }, {render:displayWord}));
+  });
+}
+
+/* --- whole-word visual matching, no time pressure --- */
+function runWordPick(host, done){
+  const t=T(), st=L();
+  const len = st.stage<=2? rnd([3,4,4,5]) : rnd([5,6,6,7]);
+  const target = rnd(C().words[len]||C().words[4]);
+  const foils = wordDistractors(target, 5);
+  const opts = shuffle([target, ...foils]);
+  const wpq = isHe()?"מצאו את המילה הזהה":"Find the matching word";
+  host.appendChild(el("p",{class:"eyebrow center"}, wpq));
+  const wlb=listenBtn(wpq,{compact:true});
+  if(wlb) host.appendChild(el("div",{class:"listenrow",style:"justify-content:center"}, wlb));
+  announceOnce("wp", wpq);
+  const stage=makeStage(); stage.style.minHeight="120px";
+  stage._in.appendChild(el("div",{class:"stim word"}, displayWord(target)));
+  host.appendChild(stage);
+  const t0=performance.now();
+  const g=el("div",{class:"choices"});
+  opts.forEach(o=>{
+    g.appendChild(el("button",{class:"choice", style:"font-size:21px", onClick:e=>{
+      const ok=o===target, rt=performance.now()-t0;
+      [...g.children].forEach(c=>c.disabled=true);
+      e.currentTarget.classList.add(ok?"correct":"wrong");
+      const ws=st.wordStats; const w=ws[target]||(ws[target]={n:0,k:0}); w.n++; if(ok) w.k++;
+      logTrial({kind:"word_pick", item:target, resp:o, ok, rt:Math.round(rt), len});
+      saveState(); later(done, ok?350:800);
+    }}, displayWord(o)));
+  });
+  host.appendChild(g);
+}
+
+/* --- Hebrew: root families. Three words share a שורש, one does not. --- */
+function runRoot(host, done){
+  const t=T();
+  const fam = rnd(HE.roots);
+  const ins = shuffle(fam.in).slice(0,3);
+  const out = rnd(fam.out);
+  const opts = shuffle([...ins, out]);
+  host.appendChild(el("p",{class:"eyebrow center"}, `${t.ex_root} · ${fam.r}`));
+  host.appendChild(el("p",{class:"center muted"}, t.root_q));
+  const rlb=listenBtn(t.root_q,{compact:true});
+  if(rlb) host.appendChild(el("div",{class:"listenrow",style:"justify-content:center"}, rlb));
+  announceOnce("root", t.root_q);
+  const t0=performance.now();
+  const g=el("div",{class:"choices"});
+  opts.forEach(o=>{
+    g.appendChild(el("button",{class:"choice", style:"font-size:23px", onClick:e=>{
+      const ok=o===out;
+      [...g.children].forEach(c=>c.disabled=true);
+      e.currentTarget.classList.add(ok?"correct":"wrong");
+      if(!ok) [...g.children].forEach(c=>{ if(c.textContent===out) c.classList.add("reveal"); });
+      logTrial({kind:"root", item:fam.r, ok, rt:Math.round(performance.now()-t0)});
+      saveState(); later(done, ok?400:1000);
+    }}, o));
+  });
+  host.appendChild(g);
+}
+
+/* --- Hebrew: final letter forms. A word-boundary cue English does not have. --- */
+function runFinals(host, done){
+  const t=T();
+  const base = rnd(Object.keys(HE.finals));
+  const correct = HE.finals[base];
+  const others = Object.values(HE.finals).filter(x=>x!==correct);
+  const opts = shuffle([correct, ...shuffle(others).slice(0,3)]);
+  host.appendChild(el("p",{class:"eyebrow center"}, t.ex_final));
+  const fq="איזו היא הצורה הסופית של האות הזאת?";
+  host.appendChild(el("p",{class:"center muted"}, fq));
+  const nlb=listenBtn(fq,{compact:true});
+  if(nlb) host.appendChild(el("div",{class:"listenrow",style:"justify-content:center"}, nlb));
+  announceOnce("fin", fq);
+  const stage=makeStage(); stage.style.minHeight="130px";
+  stage._in.appendChild(el("div",{class:"stim"}, base));
+  host.appendChild(stage);
+  const t0=performance.now();
+  host.appendChild(choiceGrid(opts, correct, (pick,ok)=>{
+    logTrial({kind:"finals", item:correct, resp:pick, ok, rt:Math.round(performance.now()-t0)});
+    saveState(); done();
+  }));
+}
+
+/* --- English: case matching --- */
+function runCase(host, done){
+  const t=T();
+  const lower = rnd(EN.letters);
+  const correct = lower.toUpperCase();
+  const foils = distractors(lower,3).map(x=>x.toUpperCase());
+  const opts = shuffle(uniq([correct, ...foils])).slice(0,4);
+  if(!opts.includes(correct)) opts[0]=correct;
+  host.appendChild(el("p",{class:"eyebrow center"}, t.ex_case));
+  host.appendChild(el("p",{class:"center muted"}, t.final_q));
+  const clb=listenBtn(t.final_q,{compact:true});
+  if(clb) host.appendChild(el("div",{class:"listenrow",style:"justify-content:center"}, clb));
+  announceOnce("case", t.final_q);
+  const stage=makeStage(); stage.style.minHeight="130px";
+  stage._in.appendChild(el("div",{class:"stim"}, lower));
+  host.appendChild(stage);
+  const t0=performance.now();
+  host.appendChild(choiceGrid(shuffle(opts), correct, (pick,ok)=>{
+    noteLetter(lower, ok, performance.now()-t0);
+    logTrial({kind:"case", item:correct, resp:pick, ok, rt:Math.round(performance.now()-t0)});
+    saveState(); done();
+  }));
+}
+
+/* --- sentence: timed silent/oral read, then one comprehension question --- */
+function runSentence(host, done){
+  const t=T();
+  SESS && (SESS.seenSent = SESS.seenSent || new Set());
+  let sent, guard=0;
+  do{ sent = genSentence(); guard++; }
+  while(SESS && SESS.seenSent.has(sent.text) && guard<25);
+  SESS && SESS.seenSent.add(sent.text);
+  const g = genQuestion(sent);
+  const choices = shuffle([g.answer, ...g.wrong]);
+  const item = {t:sent.text, q:g.q, a:choices, c:choices.indexOf(g.answer)};
+  const box=el("div",{});
+  host.appendChild(box);
+  let t0=0;
+  const phase1=()=>{
+    box.innerHTML="";
+    box.appendChild(el("p",{class:"eyebrow center"}, t.read_aloud));
+    const slb=listenBtn(t.read_aloud,{compact:true});
+    if(slb) box.appendChild(el("div",{class:"listenrow",style:"justify-content:center"}, slb));
+    announceOnce("sent", t.read_aloud);
+    const p=el("div",{class:"passage"}, el("p",{}, item.t));
+    box.appendChild(p);
+    t0=performance.now();
+    box.appendChild(el("button",{class:"btn", onClick:phase2}, t.done_reading));
+  };
+  const phase2=()=>{
+    const rt=performance.now()-t0;
+    box.innerHTML="";
+    box.appendChild(el("p",{class:"eyebrow center"}, t.comp_q));
+    box.appendChild(el("p",{class:"center big"}, item.q));
+    const qlb=listenBtn(item.q,{compact:true});
+    if(qlb) box.appendChild(el("div",{class:"listenrow",style:"justify-content:center"}, qlb));
+    const opts=shuffle(item.a.map((a,i)=>({a,i})));
+    const g=el("div",{class:"choices"});
+    opts.forEach(o=>{
+      g.appendChild(el("button",{class:"choice wide", onClick:e=>{
+        const ok=o.i===item.c;
+        [...g.children].forEach(c=>c.disabled=true);
+        e.currentTarget.classList.add(ok?"correct":"wrong");
+        const words=item.t.split(/\s+/).filter(Boolean).length;
+        recordWpm(words, rt/1000, "sentence", 1);
+        L().compHistory.push({t:Date.now(), pct: ok?1:0});
+        logTrial({kind:"sentence", item:item.t.slice(0,14), ok, rt:Math.round(rt)});
+        saveState(); later(done, ok?450:1000);
+      }}, o.a));
+    });
+    box.appendChild(g);
+  };
+  phase1();
+}
+
+/* --- Multiple Oral Re-reading. The same passage stays assigned across
+       sessions; two reads per session; comprehension after the second. --- */
+function runMor(host, done){
+  const t=T(), st=L();
+  if(!st.genPassages) st.genPassages=[];
+  const bank=[...C().passages, ...st.genPassages.filter(p=>p.lang===S.lang)];
+  const counts = bank.map(p=>st.passageReads[p.id]||0);
+  let idx = counts.findIndex(c=>c<10);
+  let P;
+  if(idx<0){
+    P = genPassage(); P.lang=S.lang;
+    st.genPassages.push(P);
+    if(st.genPassages.length>12) st.genPassages.shift();
+    saveState();
+  } else P = bank[idx];
+  let readNo = (st.passageReads[P.id]||0);
+  let reads = 0, times=[];
+  const box=el("div",{}); host.appendChild(box);
+
+  const intro=()=>{
+    box.innerHTML="";
+    box.appendChild(el("p",{class:"eyebrow center"}, `${t.ex_mor} · ${P.title}`));
+    box.appendChild(el("p",{class:"center muted"}, `${t.read_n} ${readNo+reads+1}`));
+    box.appendChild(el("div",{class:"note"}, isHe()
+      ? "אותו קטע, שוב ושוב. זו השיטה עם התמיכה המחקרית הטובה ביותר שיש כרגע — ורוב התועלת מגיעה מהמילים שחוזרות."
+      : "The same passage, again and again. This is the best-supported method available — and most of the benefit comes from the words that repeat."));
+    const mlb=listenBtn(t.ex_mor+". "+(isHe()
+      ? "אותו קטע, שוב ושוב. קראו אותו בקול, בקצב שלכם."
+      : "The same passage, again and again. Read it aloud, at your own pace."));
+    if(mlb) box.appendChild(el("div",{class:"listenrow"}, mlb));
+    box.appendChild(el("button",{class:"btn", onClick:read}, t.start_reading));
+  };
+  const read=()=>{
+    box.innerHTML="";
+    box.appendChild(el("p",{class:"eyebrow center"}, `${t.read_n} ${readNo+reads+1} · ${t.read_aloud}`));
+    const p=el("div",{class:"passage"});
+    P.body.forEach(par=>p.appendChild(el("p",{},par)));
+    box.appendChild(p);
+    const t0=performance.now();
+    const clock=el("div",{class:"timer center",style:"margin-bottom:12px"},"0:00");
+    box.appendChild(clock);
+    const iv=setInterval(()=>{ clock.textContent=fmtT((performance.now()-t0)/1000); },500);
+    TIMERS.push(iv);
+    box.appendChild(el("button",{class:"btn", onClick:()=>{
+      clearInterval(iv);
+      const sec=(performance.now()-t0)/1000;
+      const words=P.body.join(" ").split(/\s+/).filter(Boolean).length;
+      reads++;
+      const wpm=recordWpm(words, sec, P.id, readNo+reads);
+      times.push(wpm);
+      st.passageReads[P.id]=(st.passageReads[P.id]||0)+1;
+      logTrial({kind:"mor", item:P.id, ok:true, rt:Math.round(sec*1000)});
+      saveState();
+      if(reads<2) between(wpm); else quiz();
+    }}, t.done_reading));
+  };
+  const between=(wpm)=>{
+    box.innerHTML="";
+    if(wpm===null){
+      box.appendChild(el("h3",{class:"center"}, t.too_fast));
+      box.appendChild(el("p",{class:"center muted"}, t.too_fast_sub));
+      box.appendChild(el("button",{class:"btn",style:"margin-top:16px", onClick:read}, t.start_reading));
+      return;
+    }
+    box.appendChild(el("h2",{class:"center"}, Math.round(wpm)+" "+t.wpm));
+    const prev = st.wpmHistory.filter(x=>x.id===P.id).slice(-3,-1);
+    if(prev.length) box.appendChild(el("p",{class:"center muted"},
+      isHe()? `בקריאה הקודמת של הקטע הזה: ${Math.round(prev[prev.length-1].wpm)}`
+            : `Last time you read this passage: ${Math.round(prev[prev.length-1].wpm)}`));
+    box.appendChild(el("button",{class:"btn",style:"margin-top:16px", onClick:read}, t.start_reading));
+  };
+  const quiz=()=>{
+    const q=rnd(P.q);
+    box.innerHTML="";
+    box.appendChild(el("p",{class:"eyebrow center"}, t.comp_q));
+    box.appendChild(el("p",{class:"center big"}, q.q));
+    const mqlb=listenBtn(q.q,{compact:true});
+    if(mqlb) box.appendChild(el("div",{class:"listenrow",style:"justify-content:center"}, mqlb));
+    const opts=shuffle(q.a.map((a,i)=>({a,i})));
+    const g=el("div",{class:"choices"});
+    opts.forEach(o=>{
+      g.appendChild(el("button",{class:"choice wide", onClick:e=>{
+        const ok=o.i===q.c;
+        [...g.children].forEach(c=>c.disabled=true);
+        e.currentTarget.classList.add(ok?"correct":"wrong");
+        st.compHistory.push({t:Date.now(), pct: ok?1:0});
+        saveState(); later(done, 700);
+      }}, o.a));
+    });
+    box.appendChild(g);
+  };
+  intro();
+}
+
+/* --- stage 5: read your own text, untimed --- */
+function runReal(host, done){
+  const t=T(), st=L();
+  if(!st.library.length){
+    host.appendChild(el("div",{class:"note"}, t.empty_lib));
+    host.appendChild(el("button",{class:"btn", onClick:()=>{ close(); open(libraryScreen); }}, t.read_something));
+    host.appendChild(el("div",{style:"height:10px"}));
+    host.appendChild(el("button",{class:"btn ghost", onClick:done}, t.next));
+    return;
+  }
+  const item = rnd(st.library);
+  host.appendChild(el("p",{class:"eyebrow center"}, t.free_read));
+  const p=el("div",{class:"passage"});
+  item.text.split(/\n+/).forEach(par=>p.appendChild(el("p",{},par)));
+  host.appendChild(p);
+  const t0=performance.now();
+  host.appendChild(el("button",{class:"btn", onClick:()=>{
+    const sec=(performance.now()-t0)/1000;
+    const words=item.text.split(/\s+/).filter(Boolean).length;
+    recordWpm(words, sec, "real", 1);
+    logTrial({kind:"real", item:"library", ok:true, rt:Math.round(sec*1000)});
+    saveState(); done();
+  }}, t.done_reading));
+}
+
+/* ============================================================
+   ASSESSMENT — the word-length probe
+   A word appears and stays. The person presses the moment they
+   have read it; that latency, regressed on letter count, is the
+   slope that characterises letter-by-letter reading.
+   ============================================================ */
+let ASS=null;
+function assessmentScreen(){
+  const t=T();
+  const w=el("div",{class:"screen",style:"padding-top:18px"});
+  if(!ASS){
+    w.appendChild(el("button",{class:"iconbtn","aria-label":t.back, onClick:()=>{ASS=null;close();}},"✕"));
+    w.appendChild(el("h2",{style:"margin-top:14px"},t.as_title));
+    w.appendChild(el("p",{},t.as_intro));
+    const lr=listenRow(t.as_title+". "+t.as_intro); if(lr) w.appendChild(lr);
+    announce(t.as_intro);
+    w.appendChild(el("div",{class:"note"}, isHe()
+      ? "המספר שיצא בסוף הוא לא ציון. הוא נקודת ההשוואה שלכם לעצמכם בעוד חודש."
+      : "The number at the end is not a score. It is your comparison point against yourself in a month."));
+    w.appendChild(el("button",{class:"btn", onClick:()=>{
+      const lens=[3,4,5,6,7,8];
+      const trials=[];
+      lens.forEach(n=>{ shuffle(C().probeWords[n]).slice(0,4).forEach(word=>trials.push({word,len:[...word].length})); });
+      ASS={phase:"probe", i:0, trials:shuffle(trials), rows:[], wpm:null};
+      open(assessmentScreen);
+    }}, t.as_begin));
+    return w;
+  }
+  if(ASS.phase==="probe") return probePhase(w);
+  if(ASS.phase==="passage") return passagePhase(w);
+  return resultPhase(w);
+}
+function probePhase(w){
+  const t=T(), a=ASS;
+  if(a.i>=a.trials.length){ a.phase="passage"; return assessmentScreen(); }
+  const tr=a.trials[a.i];
+  w.appendChild(el("p",{class:"eyebrow"}, `${t.as_running} ${a.i+1} / ${a.trials.length}`));
+  const bar=el("div",{class:"sessbar",style:"margin-bottom:14px"});
+  a.trials.forEach((_,i)=>bar.appendChild(el("i",{class: i<a.i?"done": i===a.i?"now":""})));
+  w.appendChild(bar);
+  const stage=makeStage(); w.appendChild(stage);
+  const host=el("div",{}); w.appendChild(host);
+  const inner=stage._in;
+  inner.appendChild(el("div",{class:"fixation"},"+"));
+  later(()=>{
+    inner.innerHTML="";
+    inner.appendChild(el("div",{class:"stim word"}, displayWord(tr.word)));
+    const onset=performance.now();
+    const btn=el("button",{class:"btn",style:"min-height:76px;font-size:21px", onClick:()=>{
+      const rt=performance.now()-onset;
+      inner.innerHTML=""; host.innerHTML="";
+      host.appendChild(el("p",{class:"muted center"},t.which_word));
+      const opts=shuffle([tr.word, ...wordDistractors(tr.word,3)]).map(displayWord);
+      host.appendChild(choiceGrid(opts, displayWord(tr.word), (pick,ok)=>{
+        a.rows.push({len:tr.len, rt, ok, word:tr.word});
+        a.i++; open(assessmentScreen);
+      }));
+    }}, t.ive_read);
+    host.appendChild(btn);
+  }, 520);
+  return w;
+}
+function passagePhase(w){
+  const t=T(), a=ASS, P=C().probePassage;
+  w.appendChild(el("h2",{},t.as_read_title));
+  w.appendChild(el("p",{},t.as_read_intro));
+  const lr2=listenRow(t.as_read_title+". "+t.as_read_intro); if(lr2) w.appendChild(lr2);
+  announce(t.as_read_intro);
+  const p=el("div",{class:"passage"});
+  P.body.forEach(par=>p.appendChild(el("p",{},par)));
+  w.appendChild(p);
+  const t0=performance.now();
+  const clock=el("div",{class:"timer center",style:"margin-bottom:12px"},"0:00");
+  w.appendChild(clock);
+  const iv=setInterval(()=>{clock.textContent=fmtT((performance.now()-t0)/1000);},500);
+  TIMERS.push(iv);
+  w.appendChild(el("button",{class:"btn", onClick:()=>{
+    clearInterval(iv);
+    const sec=(performance.now()-t0)/1000;
+    const pw = P.body.join(" ").split(/\s+/).filter(Boolean).length;
+    const raw = pw/(sec/60);
+    a.wpm = (sec>1.5 && isFinite(raw) && raw>=3 && raw<=350) ? raw : null;
+    a.phase="result"; open(assessmentScreen);
+  }}, t.done_reading));
+  return w;
+}
+function resultPhase(w){
+  const t=T(), a=ASS, st=L();
+  const fit = fitSlope(a.rows);
+  const acc = a.rows.filter(r=>r.ok).length/a.rows.length;
+  const prevSlope = st.slopeHistory.length? st.slopeHistory[st.slopeHistory.length-1] : null;
+
+  if(!a.saved){
+    a.saved=true;
+    if(fit) st.slopeHistory.push({t:Date.now(), slope:fit.slope, intercept:fit.intercept, n:fit.n, r2:+fit.r2.toFixed(2)});
+    if(a.wpm && isFinite(a.wpm)) st.wpmHistory.push({t:Date.now(), wpm:a.wpm, id:"assessment", read:1});
+    markDay(); addXP(60); saveState();
+  }
+
+  w.appendChild(el("h2",{},t.as_result));
+  if(!fit){
+    const nc=el("section",{class:"card"});
+    nc.appendChild(el("h3",{},t.as_nofit));
+    nc.appendChild(el("p",{},t.as_nofit_sub));
+    const nb=listenBtn(t.as_nofit+". "+t.as_nofit_sub);
+    if(nb) nc.appendChild(el("div",{class:"listenrow",style:"margin:10px 0 0"}, nb));
+    w.appendChild(nc);
+    announce(t.as_nofit+". "+t.as_nofit_sub);
+  }
+  if(fit){
+    const c=el("section",{class:"card"});
+    c.appendChild(el("p",{class:"eyebrow"},t.as_slope_line));
+    const m=el("div",{class:"metric"});
+    m.appendChild(el("span",{class:"n"},String(fit.slope)));
+    m.appendChild(el("span",{class:"u"},t.as_ms));
+    c.appendChild(m);
+    c.appendChild(el("p",{class:"muted"},t.slope_help));
+    if(prevSlope){
+      const d=fit.slope-prevSlope.slope;
+      c.appendChild(el("div",{class:"note"},
+        (isHe()? `${t.as_compare}: ${d<0?"ירידה של ":"עלייה של "}${Math.abs(d)} מילישניות לאות.`
+               : `${t.as_compare}: ${d<0?"down ":"up "}${Math.abs(d)} ms per letter.`)
+        + " " + t.honest_1));
+    } else {
+      c.appendChild(el("div",{class:"note"}, t.as_first));
+    }
+    w.appendChild(c);
+  }
+  const grid=el("div",{class:"metricgrid",style:"margin-bottom:16px"});
+  grid.appendChild(mini(t.reading_speed, (a.wpm!==null&&a.wpm!==undefined)? String(Math.round(a.wpm)):"—", t.wpm));
+  grid.appendChild(mini(t.as_acc, Math.round(acc*100)+"%",""));
+  w.appendChild(grid);
+
+  // per-length breakdown makes the length effect visible, not just abstract
+  const tbl=el("section",{class:"card"});
+  tbl.appendChild(el("p",{class:"eyebrow"}, isHe()?"זמן קריאה לפי אורך מילה":"Reading time by word length"));
+  const byLen={};
+  a.rows.filter(r=>r.ok).forEach(r=>(byLen[r.len]=byLen[r.len]||[]).push(r.rt));
+  Object.keys(byLen).sort((x,y)=>x-y).forEach(k=>{
+    const arr=byLen[k], avg=Math.round(arr.reduce((s,v)=>s+v,0)/arr.length);
+    const row=el("div",{class:"pair"});
+    row.appendChild(el("span",{}, isHe()? `${k} אותיות` : `${k} letters`));
+    row.appendChild(el("span",{class:"ct"}, (avg/1000).toFixed(2)+"s"));
+    tbl.appendChild(row);
+  });
+  w.appendChild(tbl);
+  const spokenResult = fit
+    ? `${t.as_result}. ${t.as_slope_line} ${fit.slope} ${t.as_ms}. ${t.slope_help}`
+    : t.as_result;
+  if(fit){
+    const lr3=listenRow(spokenResult); if(lr3) w.appendChild(lr3);
+    announce(spokenResult);
+  }
+  w.appendChild(el("button",{class:"btn", onClick:()=>{ ASS=null; go("progress"); }}, t.done));
+  return w;
+}
+
+/* ============================================================
+   LIBRARY / FREE READING
+   ============================================================ */
+function libraryScreen(){
+  const t=T(), st=L();
+  const w=el("div",{class:"screen",style:"padding-top:18px"});
+  w.appendChild(el("button",{class:"iconbtn","aria-label":t.back, onClick:close},"✕"));
+  w.appendChild(el("h2",{style:"margin-top:14px"},t.free_read));
+  w.appendChild(el("p",{class:"muted"},t.free_read_sub));
+
+  const ta=el("textarea",{rows:4, placeholder:t.paste_here, dir: T().dir,
+    style:"width:100%;padding:14px;font-size:17px;border:1px solid var(--rule);border-radius:5px;"+
+          "background:var(--paper-2);color:var(--ink);font-family:inherit;margin-bottom:12px"});
+  w.appendChild(ta);
+  w.appendChild(el("button",{class:"btn", onClick:()=>{
+    const v=ta.value.trim(); if(!v) return;
+    st.library.unshift({t:Date.now(), text:v, title:v.split(/\s+/).slice(0,5).join(" ")});
+    st.library=st.library.slice(0,20); saveState(); open(libraryScreen);
+  }}, t.show_it));
+
+  w.appendChild(el("div",{class:"rule"}));
+  if(!st.library.length){
+    w.appendChild(el("p",{class:"muted"},t.empty_lib));
+  } else {
+    st.library.forEach((it,i)=>{
+      const card=el("section",{class:"card"});
+      card.appendChild(el("h3",{}, it.title + (it.text.length>40?"…":"")));
+      card.appendChild(el("p",{class:"muted"}, new Date(it.t).toLocaleDateString(S.lang==="he"?"he-IL":"en-GB")));
+      const row=el("div",{class:"btnrow"});
+      row.appendChild(el("button",{class:"btn sm quiet", onClick:()=>open(()=>readerScreen(it))}, t.show_it));
+      row.appendChild(el("button",{class:"btn sm ghost", onClick:()=>{
+        st.library.splice(i,1); saveState(); open(libraryScreen);
+      }}, isHe()?"מחיקה":"Delete"));
+      card.appendChild(row);
+      w.appendChild(card);
+    });
+  }
+  // built-in passages are always available to read for pleasure
+  const bp=el("section",{class:"card"});
+  bp.appendChild(el("p",{class:"eyebrow"}, isHe()?"קטעים מוכנים":"Ready passages"));
+  [...C().passages, ...(st.genPassages||[]).filter(p=>p.lang===S.lang)].forEach(P=>{
+    bp.appendChild(el("div",{class:"pair"},
+      el("span",{},P.title),
+      el("button",{class:"btn sm quiet", onClick:()=>open(()=>readerScreen({title:P.title,text:P.body.join("\n")}))}, t.show_it)));
+  });
+  w.appendChild(bp);
+  return w;
+}
+function readerScreen(item){
+  const t=T();
+  const w=el("div",{class:"screen",style:"padding-top:18px"});
+  w.appendChild(el("button",{class:"iconbtn","aria-label":t.back, onClick:()=>open(libraryScreen)},"✕"));
+  w.appendChild(el("h3",{style:"margin-top:14px"}, item.title));
+  const p=el("div",{class:"passage"});
+  item.text.split(/\n+/).forEach(par=>p.appendChild(el("p",{},par)));
+  w.appendChild(p);
+  w.appendChild(el("button",{class:"btn ghost", onClick:openLook}, t.appearance));
+  return w;
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+const _render = render;
+render = function(){ clearTimers(); _render(); };
+
+function installLifecycle(){
+  const bail=()=>{ if(SESS) parkSession(); flushState(); };
+  document.addEventListener("visibilitychange", ()=>{
+    if(document.visibilityState==="hidden") bail(); else if(SESS) requestWake();
+  });
+  window.addEventListener("pagehide", bail);
+  window.addEventListener("beforeunload", bail);
+}
+
+(async function boot(){
+  await loadState();
+  installLifecycle();
+  initServiceWorker();
+  if(!S.voice) S.voice={on:true,auto:true,rate:0.9,force:false};
+  if(S.voice.force===undefined) S.voice.force=false;
+  ["he","en"].forEach(k=>{ if(!S[k].errorTypes) S[k].errorTypes={}; if(!S[k].errorLog) S[k].errorLog=[];
+                           if(!S[k].exerciseStats) S[k].exerciseStats={};
+                           if(S[k].committedTrials===undefined) S[k].committedTrials=S[k].totalTrials||0;
+                           if(!S[k].genPassages) S[k].genPassages=[]; });
+  // browsers refuse to speak before a gesture; arm the engine on the first tap
+  document.addEventListener("pointerdown", function prime(){
+    if(!TTS.primed && TTS.supported()){ try{ window.speechSynthesis.resume(); }catch(e){} }
+    document.removeEventListener("pointerdown", prime);
+  }, {once:true});
+  TTS.init();
+  applyLang(); applyLook();
+  render();
+})();
+</script>
+</body>
+</html>
